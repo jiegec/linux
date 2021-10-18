@@ -74,10 +74,6 @@
 			compatible = "sifive,error0";
 			reg = <0x0 0x3000 0x0 0x1000>;
 		};
-		ext_int0: external-interrupts {
-			interrupt-parent = <&plic0>;
-			interrupts = <1 2>;
-		};
 		plic0: interrupt-controller@c000000 {
 			#interrupt-cells = <1>;
 			compatible = "riscv,plic0";
@@ -111,7 +107,7 @@
 			reg-shift = <2>;
 			reg-offset = <0x1000>;
 			clock-frequency = <100000000>;
-			interrupts-extended = <&plic0 0>;
+			interrupts-extended = <&plic0 1>;
 		};
 		qspi0: qspi@60100000 {
 			compatible = "xlnx,xps-spi-2.00.a";
@@ -119,7 +115,7 @@
 			fifo-size = <256>;
 			#address-cells = <1>;
 			#size-cells = <0>;
-			interrupts-extended = <&plic0 1>;
+			interrupts-extended = <&plic0 2>;
 
 			flash@0 {
 				compatible = "mt25qu02g", "jedec,spi-nor";
