@@ -22,13 +22,22 @@
             arch = "riscv";
             compression = "none";
         };
+        ramdisk {
+            description = "Initramfs";
+            data = /incbin/("../../../../buildroot/output/images/rootfs.cpio");
+            type = "ramdisk";
+            arch = "riscv";
+            os = "linux";
+            compression = "none";
+        };
     };
     configurations {
         default = "conf";
         conf {
-            description = "Boot Linux kernel with FDT blob";
+            description = "Boot Linux kernel with FDT blob and initramfs";
             kernel = "kernel";
             fdt = "fdt";
+            ramdisk = "ramdisk";
         };
     };
 };
