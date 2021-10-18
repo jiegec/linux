@@ -9,7 +9,8 @@
 	model = "freechips,rocket-chip-vcu128";
 
 	chosen {
-		bootargs = "earlycon=sbi console=ttyHVC0";
+		bootargs = "earlycon=sbi console=ttyS0,115200n8";
+		stdout-path = "/soc/serial@60200000";
 	};
 
 	aliases {
@@ -57,14 +58,6 @@
 	ram0: memory@80000000 {
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x10000000>;
-	};
-	reserved-memory {
-		#address-cells = <2>;
-		#size-cells = <2>;
-		ranges;
-		sbi@80000000 {
-			reg = <0x0 0x80000000 0x0 0x200000>;
-		};
 	};
 	soc {
 		#address-cells = <2>;
