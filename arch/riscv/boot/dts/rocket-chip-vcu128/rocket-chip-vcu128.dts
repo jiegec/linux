@@ -5,12 +5,11 @@
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
-	compatible = "freechips,rocketchip-unknown-dev";
-	model = "freechips,rocketchip-unknown";
+	compatible = "freechips,rocket-chip-dev";
+	model = "freechips,rocket-chip-vcu128";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 earlyprintk";
-		stdout-path = "serial0:115200n8";
+		bootargs = "earlycon=sbi console=ttyHVC0";
 	};
 
 	aliases {
@@ -56,6 +55,14 @@
 	ram0: memory@80000000 {
 		device_type = "memory";
 		reg = <0x80000000 0x10000000>;
+	};
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+		sbi@80000000 {
+			reg = <0x80000000 0x200000>;
+		};
 	};
 	soc {
 		#address-cells = <1>;

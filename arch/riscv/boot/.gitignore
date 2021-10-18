@@ -4,3 +4,7 @@ Image.*
 loader
 loader.lds
 loader.bin
+
+# U-Boot FIT Image
+*.itb
+uImage
