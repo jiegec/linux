@@ -49,7 +49,6 @@ config SOC_ROCKET_CHIP_VCU128
 	bool "Rocket Chip VCU128 SoCs"
 	select SIFIVE_PLIC
 	select OF
-	select BUILTIN_DTB
 	help
 	  This enables support for Rocket Chip VCU128 platform.
 

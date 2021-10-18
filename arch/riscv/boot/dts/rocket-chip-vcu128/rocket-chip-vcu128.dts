@@ -3,8 +3,8 @@
 #include <dt-bindings/gpio/gpio.h>
 
 / {
-	#address-cells = <1>;
-	#size-cells = <1>;
+	#address-cells = <2>;
+	#size-cells = <2>;
 	compatible = "freechips,rocket-chip-dev";
 	model = "freechips,rocket-chip-vcu128";
 
@@ -22,6 +22,8 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		timebase-frequency = <1000000>;
+
 		cpu0: cpu@0 {
 			clock-frequency = <50000000>;
 			compatible = "sifive,rocket0", "riscv";
@@ -54,37 +56,30 @@
 	};
 	ram0: memory@80000000 {
 		device_type = "memory";
-		reg = <0x80000000 0x10000000>;
+		reg = <0x0 0x80000000 0x0 0x10000000>;
 	};
 	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <2>;
+		#size-cells = <2>;
 		ranges;
 		sbi@80000000 {
-			reg = <0x80000000 0x200000>;
+			reg = <0x0 0x80000000 0x0 0x200000>;
 		};
 	};
 	soc {
-		#address-cells = <1>;
-		#size-cells = <1>;
+		#address-cells = <2>;
+		#size-cells = <2>;
 		compatible = "freechips,rocketchip-unknown-soc", "simple-bus";
 		ranges;
 		clint0: clint@2000000 {
 			compatible = "riscv,clint0";
 			interrupts-extended = <&cpu0_intc 3 &cpu0_intc 7>;
-			reg = <0x2000000 0x10000>;
-			reg-names = "control";
-		};
-		debug0: debug-controller@0 {
-			compatible = "sifive,debug-013", "riscv,debug-013";
-			debug-attach = "jtag";
-			interrupts-extended = <&cpu0_intc 65535>;
-			reg = <0x0 0x1000>;
+			reg = <0x0 0x2000000 0x0 0x10000>;
 			reg-names = "control";
 		};
 		error0: error-device@3000 {
 			compatible = "sifive,error0";
-			reg = <0x3000 0x1000>;
+			reg = <0x0 0x3000 0x0 0x1000>;
 		};
 		ext_int0: external-interrupts {
 			interrupt-parent = <&plic0>;
@@ -95,7 +90,7 @@
 			compatible = "riscv,plic0";
 			interrupt-controller;
 			interrupts-extended = <&cpu0_intc 11 &cpu0_intc 9>;
-			reg = <0xc000000 0x4000000>;
+			reg = <0x0 0xc000000 0x0 0x4000000>;
 			reg-names = "control";
 			riscv,max-priority = <3>;
 			riscv,ndev = <2>;
@@ -104,11 +99,11 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "simple-bus";
-			ranges = <0x60000000 0x60000000 0x20000000>;
+			ranges = <0x0 0x60000000 0x60000000 0x20000000>;
 		};
 		boot_rom0: rom@10000 {
 			compatible = "sifive,rom0";
-			reg = <0x10000 0x10000>;
+			reg = <0x0 0x10000 0x0 0x10000>;
 			reg-names = "mem";
 		};
 		pbus0: subsystem_pbus_clock {
@@ -119,7 +114,7 @@
 		};
 		uart0: serial@60200000 {
 			compatible = "ns16550a";
-			reg = <0x60200000 0x1000>;
+			reg = <0x0 0x60200000 0x0 0x1000>;
 			reg-shift = <2>;
 			reg-offset = <0x1000>;
 			clock-frequency = <100000000>;
@@ -127,7 +122,7 @@
 		};
 		qspi0: qspi@60100000 {
 			compatible = "xlnx,xps-spi-2.00.a";
-			reg = <0x60100000 0x1000>;
+			reg = <0x0 0x60100000 0x0 0x1000>;
 			fifo-size = <256>;
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -139,11 +134,11 @@
 			};
 		};
 		eth_dma0: eth_dma@60300000 {
-			reg = <0x0 0x60300000>;
+			reg = <0x0 0x0 0x0 0x60300000>;
 		};
 		eth0: eth0@60400000 {
 			compatible = "xlnx,axi-ethernet-1.00.a";
-			reg = <0x60400000 0x10000>;
+			reg = <0x0 0x60400000 0x0 0x10000>;
 			mac-address = [00 11 22 33 44 55];
 			device_type = "network";
 			axistream-connected = <&eth_dma0>;
@@ -172,7 +167,7 @@
 		};
 		i2c0: i2c@60500000 {
 			compatible = "xlnx,xps-iic-2.00.a";
-			reg = <0x60500000 0x10000>;
+			reg = <0x0 0x60500000 0x0 0x10000>;
 			#size-cells = <0>;
 			#address-cells = <1>;
 			clock-frequency = <1000>;
