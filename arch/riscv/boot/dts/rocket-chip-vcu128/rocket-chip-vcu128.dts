@@ -64,6 +64,12 @@
 		#size-cells = <2>;
 		compatible = "freechips,rocketchip-unknown-soc", "simple-bus";
 		ranges;
+
+		clk100M: clk100M {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <100000000>;
+		};
 		clint0: clint@2000000 {
 			compatible = "riscv,clint0";
 			interrupts-extended = <&cpu0_intc 3 &cpu0_intc 7>;
@@ -116,10 +122,25 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			interrupts-extended = <&plic0 2>;
+			xlnx,num-ss-bits = <0x1>;
 
+			// 256MB
 			flash@0 {
 				compatible = "mt25qu02g", "jedec,spi-nor";
 				reg = <0>;
+				spi-max-frequency = <30000000>;
+
+				partitions {
+					compatible = "fixed-partitions";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					// 1MB offset
+					partition@100000 {
+						label = "rootfs";
+						reg = <0x100000 0x8000000>;
+					};
+				};
 			};
 		};
 		eth_dma0: eth_dma@60300000 {
@@ -139,8 +160,8 @@
 			mdio: mdio {
 				#address-cells = <1>;
 				#size-cells = <0>;
-				reset-gpios = <&tca6416a 6 GPIO_ACTIVE_LOW>;
-				reset-delay-us = <2>;
+				// reset-gpios = <&tca6416a 6 GPIO_ACTIVE_LOW>;
+				// reset-delay-us = <2>;
 
 				// PCS/PMA PHY
 				xilinx_phy: phy@0 {
@@ -165,6 +186,7 @@
 			#address-cells = <1>;
 			clock-frequency = <1000>;
 			interrupts-extended = <&plic0 6>;
+			clocks = <&clk100M>;
 
 			// GPIO Expander
 			tca6416a: gpio@20 {
