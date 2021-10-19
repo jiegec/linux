@@ -115,7 +115,7 @@
 			clock-frequency = <100000000>;
 			interrupts-extended = <&plic0 1>;
 		};
-		qspi0: qspi@60100000 {
+		qspi0: spi@60100000 {
 			compatible = "xlnx,xps-spi-2.00.a";
 			reg = <0x0 0x60100000 0x0 0x1000>;
 			fifo-size = <256>;
