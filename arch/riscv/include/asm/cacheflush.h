@@ -15,10 +15,19 @@ static inline void local_flush_icache_all(void)
 
 #define PG_dcache_clean PG_arch_1
 
+// flush cache with cflush.d.l1 instruction
+void flush_dcache_range(unsigned long start, unsigned long end);
+
+static void flush_dcache_range2(unsigned long start, unsigned long size) {
+	start = __virt_to_phys(start);
+	flush_dcache_range(start, start + size);
+}
+
 static inline void flush_dcache_page(struct page *page)
 {
 	if (test_bit(PG_dcache_clean, &page->flags))
 		clear_bit(PG_dcache_clean, &page->flags);
+	flush_dcache_range2((unsigned long)page_to_phys(page), PAGE_SIZE);
 }
 #define ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE 1
 
