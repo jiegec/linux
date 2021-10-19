@@ -124,6 +124,7 @@
 		};
 		eth_dma0: eth_dma@60300000 {
 			reg = <0x0 0x60300000 0x0 0x10000>;
+			interrupts-extended = <&plic0 5 &plic0 4>; // TX, RX
 		};
 		eth0: eth0@60400000 {
 			compatible = "xlnx,axi-ethernet-1.00.a";
@@ -133,6 +134,7 @@
 			axistream-connected = <&eth_dma0>;
 			phy-handle = <&ti_dp83867>;
 			phy-mode = "sgmii";
+			interrupts-extended = <&plic0 3>;
 
 			mdio: mdio {
 				#address-cells = <1>;
@@ -140,12 +142,14 @@
 				reset-gpios = <&tca6416a 6 GPIO_ACTIVE_LOW>;
 				reset-delay-us = <2>;
 
+				// PCS/PMA PHY
 				xilinx_phy: phy@0 {
 					#phy-cells = <1>;
 					device_type = "ethernet-phy";
 					reg = <0>;
 				};
 
+				// External PHY
 				ti_dp83867: phy@3 {
 					#phy-cells = <1>;
 					device_type = "ethernet-phy";
@@ -160,7 +164,9 @@
 			#size-cells = <0>;
 			#address-cells = <1>;
 			clock-frequency = <1000>;
+			interrupts-extended = <&plic0 6>;
 
+			// GPIO Expander
 			tca6416a: gpio@20 {
 				compatible = "ti,tca6416";
 				reg = <0x20>;
