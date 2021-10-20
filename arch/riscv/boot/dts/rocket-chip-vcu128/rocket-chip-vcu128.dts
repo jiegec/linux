@@ -135,6 +135,11 @@
 					#address-cells = <1>;
 					#size-cells = <1>;
 
+					partition@0 {
+						label = "bitstream";
+						reg = <0x0 0x100000>;
+					};
+
 					// 1MB offset
 					partition@100000 {
 						label = "rootfs";
