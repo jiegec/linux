@@ -27,7 +27,6 @@ static inline void flush_dcache_page(struct page *page)
 {
 	if (test_bit(PG_dcache_clean, &page->flags))
 		clear_bit(PG_dcache_clean, &page->flags);
-	flush_dcache_range2((unsigned long)page_to_phys(page), PAGE_SIZE);
 }
 #define ARCH_IMPLEMENTS_FLUSH_DCACHE_PAGE 1
 
