@@ -7,13 +7,13 @@
 void arch_sync_dma_for_device(phys_addr_t paddr, size_t size,
 			      enum dma_data_direction dir)
 {
-	flush_dcache_range(paddr, paddr + size);
+	flush_dcache_range_phys(paddr, size);
 }
 
 void arch_sync_dma_for_cpu(phys_addr_t paddr, size_t size,
 			   enum dma_data_direction dir)
 {
-	flush_dcache_range(paddr, paddr + size);
+	flush_dcache_range_phys(paddr, size);
 }
 
 // taken from m68k arch dma.c
