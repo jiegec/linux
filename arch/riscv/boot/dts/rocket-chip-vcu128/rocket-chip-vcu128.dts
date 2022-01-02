@@ -57,7 +57,14 @@
 	};
 	ram0: memory@80000000 {
 		device_type = "memory";
-		reg = <0x0 0x80000000 0x0 0x10000000>;
+		reg = <0x0 0x80000000 0x0 0x20000000>;
+	};
+	clocks {
+		axi_clk: axi_clk {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <100000000>;
+		};
 	};
 	soc {
 		#address-cells = <2>;
@@ -161,6 +168,8 @@
 			phy-handle = <&ti_dp83867>;
 			phy-mode = "sgmii";
 			interrupts-extended = <&plic0 3>;
+			clock-names = "s_axi_lite_clk", "axis_clk";
+			clocks = <&axi_clk>, <&axi_clk>;
 
 			mdio: mdio {
 				#address-cells = <1>;
