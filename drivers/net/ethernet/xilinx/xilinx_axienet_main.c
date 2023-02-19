@@ -37,7 +37,6 @@
 #include <linux/phy.h>
 #include <linux/mii.h>
 #include <linux/ethtool.h>
-#include <asm/cacheflush.h>
 
 #include "xilinx_axienet.h"
 
@@ -842,9 +841,6 @@ axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	desc_set_phys_addr(lp, phys, cur_p);
 	cur_p->cntrl = skb_headlen(skb) | XAXIDMA_BD_CTRL_TXSOF_MASK;
 
-	// flush dcache
-	flush_dcache_range_virt((unsigned long)cur_p, sizeof(struct axidma_bd));
-
 	for (ii = 0; ii < num_frag; ii++) {
 		if (++new_tail_ptr >= lp->tx_bd_num)
 			new_tail_ptr = 0;
@@ -864,16 +860,10 @@ axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		}
 		desc_set_phys_addr(lp, phys, cur_p);
 		cur_p->cntrl = skb_frag_size(frag);
-
-		// flush dcache
-		flush_dcache_range_virt(cur_p, sizeof(struct axidma_bd));
 	}
 
 	cur_p->cntrl |= XAXIDMA_BD_CTRL_TXEOF_MASK;
 	cur_p->skb = skb;
-
-	// flush dcache
-	flush_dcache_range_virt(cur_p, sizeof(struct axidma_bd));
 
 	tail_p = lp->tx_bd_p + sizeof(*lp->tx_bd_v) * new_tail_ptr;
 	if (++new_tail_ptr >= lp->tx_bd_num)
