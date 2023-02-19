@@ -189,7 +189,6 @@
 					#phy-cells = <1>;
 					device_type = "ethernet-phy";
 					reg = <3>;
-					ti,sgmii-ref-clock-output-enable;
 					ti,dp83867-rxctrl-strap-quirk;
 				};
 			};
