@@ -12,8 +12,8 @@
             arch = "riscv";
             os = "linux";
             compression = "none";
-            load = <0x80200000>;
-            entry = <0x80200000>;
+            load = <0x82000000>;
+            entry = <0x82000000>;
         };
         fdt {
             description = "Flattened Device Tree blob";
