@@ -426,7 +426,7 @@ static void qeth_setup_ccw(struct ccw1 *ccw, u8 cmd_code, u8 flags, u32 len,
 	ccw->cmd_code = cmd_code;
 	ccw->flags = flags | CCW_FLAG_SLI;
 	ccw->count = len;
-	ccw->cda = (__u32) __pa(data);
+	ccw->cda = (__u32)virt_to_phys(data);
 }
 
 static int __qeth_issue_next_read(struct qeth_card *card)
@@ -3565,7 +3565,7 @@ static void qeth_flush_buffers(struct qeth_qdio_out_q *queue, int index,
 			if (!atomic_read(&queue->set_pci_flags_count)) {
 				/*
 				 * there's no outstanding PCI any more, so we
-				 * have to request a PCI to be sure the the PCI
+				 * have to request a PCI to be sure the PCI
 				 * will wake at some time in the future then we
 				 * can flush packed buffers that might still be
 				 * hanging around, which can happen if no
@@ -7099,8 +7099,7 @@ int qeth_open(struct net_device *dev)
 
 	local_bh_disable();
 	qeth_for_each_output_queue(card, queue, i) {
-		netif_tx_napi_add(dev, &queue->napi, qeth_tx_poll,
-				  QETH_NAPI_WEIGHT);
+		netif_napi_add_tx(dev, &queue->napi, qeth_tx_poll);
 		napi_enable(&queue->napi);
 		napi_schedule(&queue->napi);
 	}

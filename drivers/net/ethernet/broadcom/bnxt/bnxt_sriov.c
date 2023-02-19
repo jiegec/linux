@@ -823,14 +823,19 @@ static int bnxt_sriov_enable(struct bnxt *bp, int *num_vfs)
 		goto err_out2;
 
 	rc = pci_enable_sriov(bp->pdev, *num_vfs);
-	if (rc)
+	if (rc) {
+		bnxt_ulp_sriov_cfg(bp, 0);
 		goto err_out2;
+	}
 
 	return 0;
 
 err_out2:
 	/* Free the resources reserved for various VF's */
 	bnxt_hwrm_func_vf_resource_free(bp, *num_vfs);
+
+	/* Restore the max resources */
+	bnxt_hwrm_func_qcaps(bp);
 
 err_out1:
 	bnxt_free_vf_resources(bp);
@@ -846,7 +851,7 @@ void bnxt_sriov_disable(struct bnxt *bp)
 		return;
 
 	/* synchronize VF and VF-rep create and destroy */
-	mutex_lock(&bp->sriov_lock);
+	devl_lock(bp->dl);
 	bnxt_vf_reps_destroy(bp);
 
 	if (pci_vfs_assigned(bp->pdev)) {
@@ -859,7 +864,7 @@ void bnxt_sriov_disable(struct bnxt *bp)
 		/* Free the HW resources reserved for various VF's */
 		bnxt_hwrm_func_vf_resource_free(bp, num_vfs);
 	}
-	mutex_unlock(&bp->sriov_lock);
+	devl_unlock(bp->dl);
 
 	bnxt_free_vf_resources(bp);
 

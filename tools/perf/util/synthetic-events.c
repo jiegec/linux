@@ -754,7 +754,7 @@ static int __event__synthesize_thread(union perf_event *comm_event,
 	snprintf(filename, sizeof(filename), "%s/proc/%d/task",
 		 machine->root_dir, pid);
 
-	n = scandir(filename, &dirent, filter_task, alphasort);
+	n = scandir(filename, &dirent, filter_task, NULL);
 	if (n < 0)
 		return n;
 
@@ -767,11 +767,12 @@ static int __event__synthesize_thread(union perf_event *comm_event,
 		if (*end)
 			continue;
 
-		rc = -1;
+		/* some threads may exit just after scan, ignore it */
 		if (perf_event__prepare_comm(comm_event, pid, _pid, machine,
 					     &tgid, &ppid, &kernel_thread) != 0)
-			break;
+			continue;
 
+		rc = -1;
 		if (perf_event__synthesize_fork(tool, fork_event, _pid, tgid,
 						ppid, process, machine) < 0)
 			break;
@@ -987,7 +988,7 @@ int perf_event__synthesize_threads(struct perf_tool *tool,
 		return 0;
 
 	snprintf(proc_path, sizeof(proc_path), "%s/proc", machine->root_dir);
-	n = scandir(proc_path, &dirent, filter_task, alphasort);
+	n = scandir(proc_path, &dirent, filter_task, NULL);
 	if (n < 0)
 		return err;
 
@@ -1784,6 +1785,25 @@ int __machine__synthesize_threads(struct machine *machine, struct perf_tool *too
 				  perf_event__handler_t process, bool needs_mmap,
 				  bool data_mmap, unsigned int nr_threads_synthesize)
 {
+	/*
+	 * When perf runs in non-root PID namespace, and the namespace's proc FS
+	 * is not mounted, nsinfo__is_in_root_namespace() returns false.
+	 * In this case, the proc FS is coming for the parent namespace, thus
+	 * perf tool will wrongly gather process info from its parent PID
+	 * namespace.
+	 *
+	 * To avoid the confusion that the perf tool runs in a child PID
+	 * namespace but it synthesizes thread info from its parent PID
+	 * namespace, returns failure with warning.
+	 */
+	if (!nsinfo__is_in_root_namespace()) {
+		pr_err("Perf runs in non-root PID namespace but it tries to ");
+		pr_err("gather process info from its parent PID namespace.\n");
+		pr_err("Please mount the proc file system properly, e.g. ");
+		pr_err("add the option '--mount-proc' for unshare command.\n");
+		return -EPERM;
+	}
+
 	if (target__has_task(target))
 		return perf_event__synthesize_thread_map(tool, threads, process, machine,
 							 needs_mmap, data_mmap);
@@ -2108,7 +2128,7 @@ int perf_event__synthesize_stat_events(struct perf_stat_config *config, struct p
 		return err;
 	}
 
-	err = perf_event__synthesize_cpu_map(tool, evlist->core.cpus, process, NULL);
+	err = perf_event__synthesize_cpu_map(tool, evlist->core.user_requested_cpus, process, NULL);
 	if (err < 0) {
 		pr_err("Couldn't synthesize thread map.\n");
 		return err;

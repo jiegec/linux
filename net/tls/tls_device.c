@@ -97,13 +97,16 @@ static void tls_device_queue_ctx_destruction(struct tls_context *ctx)
 	unsigned long flags;
 
 	spin_lock_irqsave(&tls_device_lock, flags);
+	if (unlikely(!refcount_dec_and_test(&ctx->refcount)))
+		goto unlock;
+
 	list_move_tail(&ctx->list, &tls_device_gc_list);
 
 	/* schedule_work inside the spinlock
 	 * to make sure tls_device_down waits for that work.
 	 */
 	schedule_work(&tls_device_gc_work);
-
+unlock:
 	spin_unlock_irqrestore(&tls_device_lock, flags);
 }
 
@@ -194,8 +197,7 @@ void tls_device_sk_destruct(struct sock *sk)
 		clean_acked_data_disable(inet_csk(sk));
 	}
 
-	if (refcount_dec_and_test(&tls_ctx->refcount))
-		tls_device_queue_ctx_destruction(tls_ctx);
+	tls_device_queue_ctx_destruction(tls_ctx);
 }
 EXPORT_SYMBOL_GPL(tls_device_sk_destruct);
 
@@ -411,10 +413,16 @@ static int tls_device_copy_data(void *addr, size_t bytes, struct iov_iter *i)
 	return 0;
 }
 
+union tls_iter_offset {
+	struct iov_iter *msg_iter;
+	int offset;
+};
+
 static int tls_push_data(struct sock *sk,
-			 struct iov_iter *msg_iter,
+			 union tls_iter_offset iter_offset,
 			 size_t size, int flags,
-			 unsigned char record_type)
+			 unsigned char record_type,
+			 struct page *zc_page)
 {
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
 	struct tls_prot_info *prot = &tls_ctx->prot_info;
@@ -480,14 +488,25 @@ handle_error:
 		}
 
 		record = ctx->open_record;
-		copy = min_t(size_t, size, (pfrag->size - pfrag->offset));
-		copy = min_t(size_t, copy, (max_open_record_len - record->len));
 
-		rc = tls_device_copy_data(page_address(pfrag->page) +
-					  pfrag->offset, copy, msg_iter);
-		if (rc)
-			goto handle_error;
-		tls_append_frag(record, pfrag, copy);
+		copy = min_t(size_t, size, max_open_record_len - record->len);
+		if (copy && zc_page) {
+			struct page_frag zc_pfrag;
+
+			zc_pfrag.page = zc_page;
+			zc_pfrag.offset = iter_offset.offset;
+			zc_pfrag.size = copy;
+			tls_append_frag(record, &zc_pfrag, copy);
+		} else if (copy) {
+			copy = min_t(size_t, copy, pfrag->size - pfrag->offset);
+
+			rc = tls_device_copy_data(page_address(pfrag->page) +
+						  pfrag->offset, copy,
+						  iter_offset.msg_iter);
+			if (rc)
+				goto handle_error;
+			tls_append_frag(record, pfrag, copy);
+		}
 
 		size -= copy;
 		if (!size) {
@@ -538,6 +557,7 @@ int tls_device_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 {
 	unsigned char record_type = TLS_RECORD_TYPE_DATA;
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
+	union tls_iter_offset iter;
 	int rc;
 
 	mutex_lock(&tls_ctx->tx_lock);
@@ -549,8 +569,8 @@ int tls_device_sendmsg(struct sock *sk, struct msghdr *msg, size_t size)
 			goto out;
 	}
 
-	rc = tls_push_data(sk, &msg->msg_iter, size,
-			   msg->msg_flags, record_type);
+	iter.msg_iter = &msg->msg_iter;
+	rc = tls_push_data(sk, iter, size, msg->msg_flags, record_type, NULL);
 
 out:
 	release_sock(sk);
@@ -562,7 +582,8 @@ int tls_device_sendpage(struct sock *sk, struct page *page,
 			int offset, size_t size, int flags)
 {
 	struct tls_context *tls_ctx = tls_get_ctx(sk);
-	struct iov_iter	msg_iter;
+	union tls_iter_offset iter_offset;
+	struct iov_iter msg_iter;
 	char *kaddr;
 	struct kvec iov;
 	int rc;
@@ -578,12 +599,20 @@ int tls_device_sendpage(struct sock *sk, struct page *page,
 		goto out;
 	}
 
+	if (tls_ctx->zerocopy_sendfile) {
+		iter_offset.offset = offset;
+		rc = tls_push_data(sk, iter_offset, size,
+				   flags, TLS_RECORD_TYPE_DATA, page);
+		goto out;
+	}
+
 	kaddr = kmap(page);
 	iov.iov_base = kaddr + offset;
 	iov.iov_len = size;
 	iov_iter_kvec(&msg_iter, WRITE, &iov, 1, size);
-	rc = tls_push_data(sk, &msg_iter, size,
-			   flags, TLS_RECORD_TYPE_DATA);
+	iter_offset.msg_iter = &msg_iter;
+	rc = tls_push_data(sk, iter_offset, size, flags, TLS_RECORD_TYPE_DATA,
+			   NULL);
 	kunmap(page);
 
 out:
@@ -654,10 +683,12 @@ EXPORT_SYMBOL(tls_get_record);
 
 static int tls_device_push_pending_record(struct sock *sk, int flags)
 {
-	struct iov_iter	msg_iter;
+	union tls_iter_offset iter;
+	struct iov_iter msg_iter;
 
 	iov_iter_kvec(&msg_iter, WRITE, NULL, 0, 0);
-	return tls_push_data(sk, &msg_iter, 0, flags, TLS_RECORD_TYPE_DATA);
+	iter.msg_iter = &msg_iter;
+	return tls_push_data(sk, iter, 0, flags, TLS_RECORD_TYPE_DATA, NULL);
 }
 
 void tls_device_write_space(struct sock *sk, struct tls_context *ctx)
@@ -962,11 +993,9 @@ int tls_device_decrypted(struct sock *sk, struct tls_context *tls_ctx,
 				   tls_ctx->rx.rec_seq, rxm->full_len,
 				   is_encrypted, is_decrypted);
 
-	ctx->sw.decrypted |= is_decrypted;
-
 	if (unlikely(test_bit(TLS_RX_DEV_DEGRADED, &tls_ctx->flags))) {
 		if (likely(is_encrypted || is_decrypted))
-			return 0;
+			return is_decrypted;
 
 		/* After tls_device_down disables the offload, the next SKB will
 		 * likely have initial fragments decrypted, and final ones not
@@ -981,7 +1010,7 @@ int tls_device_decrypted(struct sock *sk, struct tls_context *tls_ctx,
 	 */
 	if (is_decrypted) {
 		ctx->resync_nh_reset = 1;
-		return 0;
+		return is_decrypted;
 	}
 	if (is_encrypted) {
 		tls_device_core_ctrl_rx_resync(tls_ctx, ctx, sk, skb);
@@ -1028,20 +1057,21 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 	if (ctx->priv_ctx_tx)
 		return -EEXIST;
 
-	start_marker_record = kmalloc(sizeof(*start_marker_record), GFP_KERNEL);
-	if (!start_marker_record)
-		return -ENOMEM;
+	netdev = get_netdev_for_sock(sk);
+	if (!netdev) {
+		pr_err_ratelimited("%s: netdev not found\n", __func__);
+		return -EINVAL;
+	}
 
-	offload_ctx = kzalloc(TLS_OFFLOAD_CONTEXT_SIZE_TX, GFP_KERNEL);
-	if (!offload_ctx) {
-		rc = -ENOMEM;
-		goto free_marker_record;
+	if (!(netdev->features & NETIF_F_HW_TLS_TX)) {
+		rc = -EOPNOTSUPP;
+		goto release_netdev;
 	}
 
 	crypto_info = &ctx->crypto_send.info;
 	if (crypto_info->version != TLS_1_2_VERSION) {
 		rc = -EOPNOTSUPP;
-		goto free_offload_ctx;
+		goto release_netdev;
 	}
 
 	switch (crypto_info->cipher_type) {
@@ -1057,13 +1087,13 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 		break;
 	default:
 		rc = -EINVAL;
-		goto free_offload_ctx;
+		goto release_netdev;
 	}
 
 	/* Sanity-check the rec_seq_size for stack allocations */
 	if (rec_seq_size > TLS_MAX_REC_SEQ_SIZE) {
 		rc = -EINVAL;
-		goto free_offload_ctx;
+		goto release_netdev;
 	}
 
 	prot->version = crypto_info->version;
@@ -1077,7 +1107,7 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 			     GFP_KERNEL);
 	if (!ctx->tx.iv) {
 		rc = -ENOMEM;
-		goto free_offload_ctx;
+		goto release_netdev;
 	}
 
 	memcpy(ctx->tx.iv + TLS_CIPHER_AES_GCM_128_SALT_SIZE, iv, iv_size);
@@ -1089,9 +1119,21 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 		goto free_iv;
 	}
 
+	start_marker_record = kmalloc(sizeof(*start_marker_record), GFP_KERNEL);
+	if (!start_marker_record) {
+		rc = -ENOMEM;
+		goto free_rec_seq;
+	}
+
+	offload_ctx = kzalloc(TLS_OFFLOAD_CONTEXT_SIZE_TX, GFP_KERNEL);
+	if (!offload_ctx) {
+		rc = -ENOMEM;
+		goto free_marker_record;
+	}
+
 	rc = tls_sw_fallback_init(sk, offload_ctx, crypto_info);
 	if (rc)
-		goto free_rec_seq;
+		goto free_offload_ctx;
 
 	/* start at rec_seq - 1 to account for the start marker record */
 	memcpy(&rcd_sn, ctx->tx.rec_seq, sizeof(rcd_sn));
@@ -1117,18 +1159,6 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 	skb = tcp_write_queue_tail(sk);
 	if (skb)
 		TCP_SKB_CB(skb)->eor = 1;
-
-	netdev = get_netdev_for_sock(sk);
-	if (!netdev) {
-		pr_err_ratelimited("%s: netdev not found\n", __func__);
-		rc = -EINVAL;
-		goto disable_cad;
-	}
-
-	if (!(netdev->features & NETIF_F_HW_TLS_TX)) {
-		rc = -EOPNOTSUPP;
-		goto release_netdev;
-	}
 
 	/* Avoid offloading if the device is down
 	 * We don't want to offload new flows after
@@ -1167,20 +1197,19 @@ int tls_set_device_offload(struct sock *sk, struct tls_context *ctx)
 
 release_lock:
 	up_read(&device_offload_lock);
-release_netdev:
-	dev_put(netdev);
-disable_cad:
 	clean_acked_data_disable(inet_csk(sk));
 	crypto_free_aead(offload_ctx->aead_send);
-free_rec_seq:
-	kfree(ctx->tx.rec_seq);
-free_iv:
-	kfree(ctx->tx.iv);
 free_offload_ctx:
 	kfree(offload_ctx);
 	ctx->priv_ctx_tx = NULL;
 free_marker_record:
 	kfree(start_marker_record);
+free_rec_seq:
+	kfree(ctx->tx.rec_seq);
+free_iv:
+	kfree(ctx->tx.iv);
+release_netdev:
+	dev_put(netdev);
 	return rc;
 }
 
@@ -1345,7 +1374,15 @@ static int tls_device_down(struct net_device *netdev)
 
 		/* Device contexts for RX and TX will be freed in on sk_destruct
 		 * by tls_device_free_ctx. rx_conf and tx_conf stay in TLS_HW.
+		 * Now release the ref taken above.
 		 */
+		if (refcount_dec_and_test(&ctx->refcount)) {
+			/* sk_destruct ran after tls_device_down took a ref, and
+			 * it returned early. Complete the destruction here.
+			 */
+			list_del(&ctx->list);
+			tls_device_free_ctx(ctx);
+		}
 	}
 
 	up_write(&device_offload_lock);
@@ -1389,9 +1426,9 @@ static struct notifier_block tls_dev_notifier = {
 	.notifier_call	= tls_dev_event,
 };
 
-void __init tls_device_init(void)
+int __init tls_device_init(void)
 {
-	register_netdevice_notifier(&tls_dev_notifier);
+	return register_netdevice_notifier(&tls_dev_notifier);
 }
 
 void __exit tls_device_cleanup(void)

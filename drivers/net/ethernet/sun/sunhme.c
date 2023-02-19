@@ -545,43 +545,24 @@ static int try_next_permutation(struct happy_meal *hp, void __iomem *tregs)
 
 static void display_link_mode(struct happy_meal *hp, void __iomem *tregs)
 {
-	printk(KERN_INFO "%s: Link is up using ", hp->dev->name);
-	if (hp->tcvr_type == external)
-		printk("external ");
-	else
-		printk("internal ");
-	printk("transceiver at ");
 	hp->sw_lpa = happy_meal_tcvr_read(hp, tregs, MII_LPA);
-	if (hp->sw_lpa & (LPA_100HALF | LPA_100FULL)) {
-		if (hp->sw_lpa & LPA_100FULL)
-			printk("100Mb/s, Full Duplex.\n");
-		else
-			printk("100Mb/s, Half Duplex.\n");
-	} else {
-		if (hp->sw_lpa & LPA_10FULL)
-			printk("10Mb/s, Full Duplex.\n");
-		else
-			printk("10Mb/s, Half Duplex.\n");
-	}
+
+	netdev_info(hp->dev,
+		    "Link is up using %s transceiver at %dMb/s, %s Duplex.\n",
+		    hp->tcvr_type == external ? "external" : "internal",
+		    hp->sw_lpa & (LPA_100HALF | LPA_100FULL) ? 100 : 10,
+		    hp->sw_lpa & (LPA_100FULL | LPA_10FULL) ? "Full" : "Half");
 }
 
 static void display_forced_link_mode(struct happy_meal *hp, void __iomem *tregs)
 {
-	printk(KERN_INFO "%s: Link has been forced up using ", hp->dev->name);
-	if (hp->tcvr_type == external)
-		printk("external ");
-	else
-		printk("internal ");
-	printk("transceiver at ");
 	hp->sw_bmcr = happy_meal_tcvr_read(hp, tregs, MII_BMCR);
-	if (hp->sw_bmcr & BMCR_SPEED100)
-		printk("100Mb/s, ");
-	else
-		printk("10Mb/s, ");
-	if (hp->sw_bmcr & BMCR_FULLDPLX)
-		printk("Full Duplex.\n");
-	else
-		printk("Half Duplex.\n");
+
+	netdev_info(hp->dev,
+		    "Link has been forced up using %s transceiver at %dMb/s, %s Duplex.\n",
+		    hp->tcvr_type == external ? "external" : "internal",
+		    hp->sw_bmcr & BMCR_SPEED100 ? 100 : 10,
+		    hp->sw_bmcr & BMCR_FULLDPLX ? "Full" : "Half");
 }
 
 static int set_happy_link_modes(struct happy_meal *hp, void __iomem *tregs)
@@ -3146,7 +3127,7 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 	if (err) {
 		printk(KERN_ERR "happymeal(PCI): Cannot register net device, "
 		       "aborting.\n");
-		goto err_out_iounmap;
+		goto err_out_free_coherent;
 	}
 
 	pci_set_drvdata(pdev, hp);
@@ -3178,6 +3159,10 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 	printk("%pM\n", dev->dev_addr);
 
 	return 0;
+
+err_out_free_coherent:
+	dma_free_coherent(hp->dma_dev, PAGE_SIZE,
+			  hp->happy_block, hp->hblock_dvma);
 
 err_out_iounmap:
 	iounmap(hp->gregs);

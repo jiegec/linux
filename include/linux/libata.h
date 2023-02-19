@@ -380,6 +380,7 @@ enum {
 	ATA_HORKAGE_MAX_TRIM_128M = (1 << 26),	/* Limit max trim size to 128M */
 	ATA_HORKAGE_NO_NCQ_ON_ATI = (1 << 27),	/* Disable NCQ on ATI chipset */
 	ATA_HORKAGE_NO_ID_DEV_LOG = (1 << 28),	/* Identify device log missing */
+	ATA_HORKAGE_NO_LOG_DIR	= (1 << 29),	/* Do not read log directory */
 
 	 /* DMA mask for user DMA control: User visible values; DO NOT
 	    renumber */
@@ -518,7 +519,10 @@ struct ata_taskfile {
 	u8			hob_lbam;
 	u8			hob_lbah;
 
-	u8			feature;
+	union {
+		u8		error;
+		u8		feature;
+	};
 	u8			nsect;
 	u8			lbal;
 	u8			lbam;
@@ -526,7 +530,10 @@ struct ata_taskfile {
 
 	u8			device;
 
-	u8			command;	/* IO operation */
+	union {
+		u8		status;
+		u8		command;
+	};
 
 	u32			auxiliary;	/* auxiliary field */
 						/* from SATA 3.1 and */
@@ -813,10 +820,8 @@ struct ata_port {
 	unsigned int		cbl;	/* cable type; ATA_CBL_xxx */
 
 	struct ata_queued_cmd	qcmd[ATA_MAX_QUEUE + 1];
-	unsigned long		sas_tag_allocated; /* for sas tag allocation only */
 	u64			qc_active;
 	int			nr_active_links; /* #links with active qcs */
-	unsigned int		sas_last_tag;	/* track next tag hw expects */
 
 	struct ata_link		link;		/* host default link */
 	struct ata_link		*slave_link;	/* see ata_slave_link_init() */
@@ -1080,7 +1085,7 @@ extern int ata_sas_scsi_ioctl(struct ata_port *ap, struct scsi_device *dev,
 extern bool ata_link_online(struct ata_link *link);
 extern bool ata_link_offline(struct ata_link *link);
 #ifdef CONFIG_PM
-extern int ata_host_suspend(struct ata_host *host, pm_message_t mesg);
+extern void ata_host_suspend(struct ata_host *host, pm_message_t mesg);
 extern void ata_host_resume(struct ata_host *host);
 extern void ata_sas_port_suspend(struct ata_port *ap);
 extern void ata_sas_port_resume(struct ata_port *ap);
@@ -1104,7 +1109,7 @@ extern void ata_unpack_xfermask(unsigned long xfer_mask,
 			unsigned long *udma_mask);
 extern u8 ata_xfer_mask2mode(unsigned long xfer_mask);
 extern unsigned long ata_xfer_mode2mask(u8 xfer_mode);
-extern int ata_xfer_mode2shift(unsigned long xfer_mode);
+extern int ata_xfer_mode2shift(u8 xfer_mode);
 extern const char *ata_mode_string(unsigned long xfer_mask);
 extern unsigned long ata_id_xfermask(const u16 *id);
 extern int ata_std_qc_defer(struct ata_queued_cmd *qc);
