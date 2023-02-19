@@ -341,6 +341,10 @@ static int axienet_dma_bd_init(struct net_device *ndev)
 		lp->rx_bd_v[i].cntrl = lp->max_frm_size;
 	}
 
+	/* Flush caches */
+	dma_sync_single_for_device(lp->dev, lp->tx_bd_p, sizeof(*lp->tx_bd_v) * lp->tx_bd_num, DMA_TO_DEVICE);
+	dma_sync_single_for_device(lp->dev, lp->rx_bd_p, sizeof(*lp->rx_bd_v) * lp->rx_bd_num, DMA_TO_DEVICE);
+
 	axienet_dma_start(lp);
 
 	return 0;
@@ -660,6 +664,9 @@ static int axienet_free_tx_chain(struct axienet_local *lp, u32 first_bd,
 	dma_addr_t phys;
 	int i;
 
+	/* Flush cache */
+	dma_sync_single_for_cpu(lp->dev, lp->tx_bd_p, sizeof(*lp->tx_bd_v) * lp->tx_bd_num, DMA_FROM_DEVICE);
+
 	for (i = 0; i < nr_bds; i++) {
 		cur_p = &lp->tx_bd_v[(first_bd + i) % lp->tx_bd_num];
 		status = cur_p->status;
@@ -716,6 +723,7 @@ static inline int axienet_check_tx_bd_space(struct axienet_local *lp,
 	struct axidma_bd *cur_p;
 
 	/* Ensure we see all descriptor updates from device or TX polling */
+	dma_sync_single_for_cpu(lp->dev, lp->tx_bd_p, sizeof(*lp->tx_bd_v) * lp->tx_bd_num, DMA_FROM_DEVICE);
 	rmb();
 	cur_p = &lp->tx_bd_v[(READ_ONCE(lp->tx_bd_tail) + num_frag) %
 			     lp->tx_bd_num];
@@ -865,6 +873,10 @@ axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	cur_p->cntrl |= XAXIDMA_BD_CTRL_TXEOF_MASK;
 	cur_p->skb = skb;
 
+	/* Flush caches */
+	dma_sync_single_for_device(lp->dev, lp->tx_bd_p, sizeof(*lp->tx_bd_v) * lp->tx_bd_num, DMA_TO_DEVICE);
+	flush_dcache_range_virt(lp->tx_bd_v, sizeof(*lp->tx_bd_v) * lp->tx_bd_num);
+
 	tail_p = lp->tx_bd_p + sizeof(*lp->tx_bd_v) * new_tail_ptr;
 	if (++new_tail_ptr >= lp->tx_bd_num)
 		new_tail_ptr = 0;
@@ -905,6 +917,10 @@ static int axienet_rx_poll(struct napi_struct *napi, int budget)
 	struct axidma_bd *cur_p;
 	struct sk_buff *skb, *new_skb;
 	struct axienet_local *lp = container_of(napi, struct axienet_local, napi_rx);
+
+	/* Flush caches */
+	dma_sync_single_for_cpu(lp->dev, lp->rx_bd_p, sizeof(*lp->rx_bd_v) * lp->rx_bd_num, DMA_FROM_DEVICE);
+	flush_dcache_range_virt(lp->rx_bd_v, sizeof(*lp->rx_bd_v) * lp->rx_bd_num);
 
 	cur_p = &lp->rx_bd_v[lp->rx_bd_ci];
 

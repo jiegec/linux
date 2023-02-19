@@ -16,8 +16,7 @@ static inline void local_flush_icache_all(void)
 #define PG_dcache_clean PG_arch_1
 
 // flush cache with cflush.d.l1 instruction
-void flush_dcache_range_phys(phys_addr_t start, unsigned long size);
-void flush_dcache_range_virt(unsigned long start, unsigned long size);
+void flush_dcache_range_virt(uintptr_t start, unsigned long size);
 
 static inline void flush_dcache_page(struct page *page)
 {

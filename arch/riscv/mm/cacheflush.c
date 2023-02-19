@@ -116,20 +116,15 @@ void flush_icache_pte(pte_t pte)
 			     : "memory");                                      \
 	}
 
-void flush_dcache_range_phys(phys_addr_t start, unsigned long size)
+void flush_dcache_range_virt(uintptr_t start, unsigned long size)
 {
-	phys_addr_t end = start + size;
-	phys_addr_t addr;
+	uintptr_t end = start + size;
+	uintptr_t addr;
 
 	start = (start >> 6) * 64;
 	end = (end >> 6) * 64;
+	FLUSH_D_ALL();
 	for (addr = start; addr <= end; addr = addr + 64) {
-		FLUSH_D_REG(addr);
+		// FLUSH_D_REG(addr);
 	}
-}
-
-void flush_dcache_range_virt(unsigned long start, unsigned long size)
-{
-	start = __virt_to_phys(start);
-	flush_dcache_range_phys(start, size);
 }
