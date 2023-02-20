@@ -142,15 +142,16 @@
 					#address-cells = <1>;
 					#size-cells = <1>;
 
+					// 128MiB bitstream
 					partition@0 {
 						label = "bitstream";
-						reg = <0x0 0x100000>;
+						reg = <0x0 0x8000000>;
 					};
 
-					// 1MB offset
+					// 16MiB data partition
 					partition@100000 {
-						label = "rootfs";
-						reg = <0x100000 0x8000000>;
+						label = "data";
+						reg = <0x8000000 0x1000000>;
 					};
 				};
 			};
