@@ -409,8 +409,7 @@ config CC_HAS_ZICBOM
 
 config RISCV_ISA_ZICBOM
 	bool "Zicbom extension support for non-coherent DMA operation"
-	# we use sifive cache instruction instead
-	# depends on CC_HAS_ZICBOM
+	depends on CC_HAS_ZICBOM
 	depends on !XIP_KERNEL && MMU
 	select RISCV_DMA_NONCOHERENT
 	select RISCV_ALTERNATIVE

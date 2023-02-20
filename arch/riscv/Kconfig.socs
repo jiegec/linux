@@ -59,8 +59,6 @@ config SOC_ROCKET_CHIP_VCU128
 	bool "Rocket Chip VCU128 SoCs"
 	select SIFIVE_PLIC
 	select OF
-	select ARCH_HAS_SYNC_DMA_FOR_CPU
-	select ARCH_HAS_SYNC_DMA_FOR_DEVICE
 	help
 	  This enables support for Rocket Chip VCU128 platform.
 

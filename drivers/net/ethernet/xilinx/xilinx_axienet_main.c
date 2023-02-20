@@ -873,10 +873,6 @@ axienet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	cur_p->cntrl |= XAXIDMA_BD_CTRL_TXEOF_MASK;
 	cur_p->skb = skb;
 
-	/* Flush caches */
-	dma_sync_single_for_device(lp->dev, lp->tx_bd_p, sizeof(*lp->tx_bd_v) * lp->tx_bd_num, DMA_TO_DEVICE);
-	flush_dcache_range_virt(lp->tx_bd_v, sizeof(*lp->tx_bd_v) * lp->tx_bd_num);
-
 	tail_p = lp->tx_bd_p + sizeof(*lp->tx_bd_v) * new_tail_ptr;
 	if (++new_tail_ptr >= lp->tx_bd_num)
 		new_tail_ptr = 0;
@@ -917,10 +913,6 @@ static int axienet_rx_poll(struct napi_struct *napi, int budget)
 	struct axidma_bd *cur_p;
 	struct sk_buff *skb, *new_skb;
 	struct axienet_local *lp = container_of(napi, struct axienet_local, napi_rx);
-
-	/* Flush caches */
-	dma_sync_single_for_cpu(lp->dev, lp->rx_bd_p, sizeof(*lp->rx_bd_v) * lp->rx_bd_num, DMA_FROM_DEVICE);
-	flush_dcache_range_virt(lp->rx_bd_v, sizeof(*lp->rx_bd_v) * lp->rx_bd_num);
 
 	cur_p = &lp->rx_bd_v[lp->rx_bd_ci];
 
