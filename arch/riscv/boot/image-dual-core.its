@@ -17,7 +17,7 @@
         };
         fdt {
             description = "Flattened Device Tree blob";
-            data = /incbin/("./dts/rocket-chip-vcu128/rocket-chip-vcu128.dtb");
+            data = /incbin/("./dts/rocket-chip-vcu128/rocket-chip-vcu128-dual-core.dtb");
             type = "flat_dt";
             arch = "riscv";
             compression = "none";

@@ -1,0 +1,43 @@
+/dts-v1/;
+
+/ {
+    description = "U-Boot fitImage for riscv64 kernel";
+    #address-cells = <1>;
+
+    images {
+        kernel {
+            description = "Linux Kernel";
+            data = /incbin/("./Image");
+            type = "kernel";
+            arch = "riscv";
+            os = "linux";
+            compression = "none";
+            load = <0x82000000>;
+            entry = <0x82000000>;
+        };
+        fdt {
+            description = "Flattened Device Tree blob";
+            data = /incbin/("./dts/rocket-chip-vcu128/rocket-chip-vcu128-single-core.dtb");
+            type = "flat_dt";
+            arch = "riscv";
+            compression = "none";
+        };
+        ramdisk {
+            description = "Initramfs";
+            data = /incbin/("../../../../buildroot/output/images/rootfs.cpio");
+            type = "ramdisk";
+            arch = "riscv";
+            os = "linux";
+            compression = "none";
+        };
+    };
+    configurations {
+        default = "conf";
+        conf {
+            description = "Boot Linux kernel with FDT blob and initramfs";
+            kernel = "kernel";
+            fdt = "fdt";
+            ramdisk = "ramdisk";
+        };
+    };
+};
