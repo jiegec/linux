@@ -10,6 +10,7 @@
 #include <linux/entry-common.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
+#include <linux/kexec.h>
 #include <linux/module.h>
 #include <linux/extable.h>
 #include <linux/mm.h>
@@ -70,9 +71,6 @@ static void show_backtrace(struct task_struct *task, const struct pt_regs *regs,
 
 	if (!task)
 		task = current;
-
-	if (user_mode(regs))
-		state.type = UNWINDER_GUESS;
 
 	printk("%sCall Trace:", loglvl);
 	for (unwind_start(&state, task, pregs);
@@ -246,6 +244,9 @@ void __noreturn die(const char *str, struct pt_regs *regs)
 
 	oops_exit();
 
+	if (regs && kexec_should_crash(current))
+		crash_kexec(regs);
+
 	if (in_interrupt())
 		panic("Fatal exception in interrupt");
 
@@ -364,14 +365,64 @@ asmlinkage void noinstr do_ade(struct pt_regs *regs)
 	irqentry_exit(regs, state);
 }
 
+/* sysctl hooks */
+int unaligned_enabled __read_mostly = 1;	/* Enabled by default */
+int no_unaligned_warning __read_mostly = 1;	/* Only 1 warning by default */
+
 asmlinkage void noinstr do_ale(struct pt_regs *regs)
 {
+	unsigned int *pc;
 	irqentry_state_t state = irqentry_enter(regs);
 
+	perf_sw_event(PERF_COUNT_SW_ALIGNMENT_FAULTS, 1, regs, regs->csr_badvaddr);
+
+	/*
+	 * Did we catch a fault trying to load an instruction?
+	 */
+	if (regs->csr_badvaddr == regs->csr_era)
+		goto sigbus;
+	if (user_mode(regs) && !test_thread_flag(TIF_FIXADE))
+		goto sigbus;
+	if (!unaligned_enabled)
+		goto sigbus;
+	if (!no_unaligned_warning)
+		show_registers(regs);
+
+	pc = (unsigned int *)exception_era(regs);
+
+	emulate_load_store_insn(regs, (void __user *)regs->csr_badvaddr, pc);
+
+	goto out;
+
+sigbus:
 	die_if_kernel("Kernel ale access", regs);
 	force_sig_fault(SIGBUS, BUS_ADRALN, (void __user *)regs->csr_badvaddr);
 
+out:
 	irqentry_exit(regs, state);
+}
+
+#ifdef CONFIG_GENERIC_BUG
+int is_valid_bugaddr(unsigned long addr)
+{
+	return 1;
+}
+#endif /* CONFIG_GENERIC_BUG */
+
+static void bug_handler(struct pt_regs *regs)
+{
+	switch (report_bug(regs->csr_era, regs)) {
+	case BUG_TRAP_TYPE_BUG:
+	case BUG_TRAP_TYPE_NONE:
+		die_if_kernel("Oops - BUG", regs);
+		force_sig(SIGTRAP);
+		break;
+
+	case BUG_TRAP_TYPE_WARN:
+		/* Skip the BUG instruction and continue */
+		regs->csr_era += LOONGARCH_INSN_SIZE;
+		break;
+	}
 }
 
 asmlinkage void noinstr do_bp(struct pt_regs *regs)
@@ -427,8 +478,7 @@ asmlinkage void noinstr do_bp(struct pt_regs *regs)
 
 	switch (bcode) {
 	case BRK_BUG:
-		die_if_kernel("Kernel bug detected", regs);
-		force_sig(SIGTRAP);
+		bug_handler(regs);
 		break;
 	case BRK_DIVZERO:
 		die_if_kernel("Break instruction in kernel code", regs);
@@ -619,9 +669,6 @@ asmlinkage void noinstr do_vint(struct pt_regs *regs, unsigned long sp)
 
 	irqentry_exit(regs, state);
 }
-
-extern void tlb_init(int cpu);
-extern void cache_error_setup(void);
 
 unsigned long eentry;
 unsigned long tlbrentry;

@@ -4,6 +4,7 @@ Image.*
 loader
 loader.lds
 loader.bin
+vmlinuz*
 xipImage
 
 # U-Boot FIT Image
