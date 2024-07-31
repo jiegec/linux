@@ -1084,3 +1084,7 @@
 &usb_1_ss2_qmpphy_out {
 	remote-endpoint = <&pmic_glink_ss2_ss_in>;
 };
+
+&uart2 {
+	status = "okay";
+};
