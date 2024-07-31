@@ -17,6 +17,7 @@
 
 	aliases {
 		serial0 = &uart21;
+		serial1 = &uart2;
 	};
 
 	wcd938x: audio-codec {
@@ -982,6 +983,14 @@
 		bias-disable;
 		output-low;
 	};
+
+	ssam_state: ssam-state {
+		wake-int {
+			pins = "gpio91";
+			function = "gpio";
+			bias-disable;
+		};
+	};
 };
 
 &uart21 {
@@ -1087,4 +1096,31 @@
 
 &uart2 {
 	status = "okay";
+
+	surface-aggregator {
+		compatible = "surface,aggregator";
+
+		current-speed = <4000000>;
+		uart-parity = "n";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&ssam_state>;
+
+		ssam_wakeup-int-gpios = <&tlmm 91 GPIO_ACTIVE_HIGH>;
+
+		ssh-d3-closes-handle;
+		ssh-buffer-size = <0x30>;
+
+		battery {
+			ssam-uid = "01:02:01:01:00";
+		};
+
+		ac {
+			ssam-uid = "01:02:01:01:01";
+		};
+
+		hid-keyboard {
+			ssam-uid = "01:15:01:01:00";
+		};
+	};
 };
