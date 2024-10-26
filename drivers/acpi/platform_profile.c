@@ -22,6 +22,8 @@ static const char * const profile_names[] = {
 };
 static_assert(ARRAY_SIZE(profile_names) == PLATFORM_PROFILE_LAST);
 
+static struct kobject *sysfs_kobj;
+
 static ssize_t platform_profile_choices_show(struct device *dev,
 					struct device_attribute *attr,
 					char *buf)
@@ -107,7 +109,7 @@ static ssize_t platform_profile_store(struct device *dev,
 
 	err = cur_profile->profile_set(cur_profile, i);
 	if (!err)
-		sysfs_notify(acpi_kobj, NULL, "platform_profile");
+		sysfs_notify(sysfs_kobj, NULL, "platform_profile");
 
 	mutex_unlock(&profile_lock);
 	if (err)
@@ -132,7 +134,7 @@ void platform_profile_notify(void)
 {
 	if (!cur_profile)
 		return;
-	sysfs_notify(acpi_kobj, NULL, "platform_profile");
+	sysfs_notify(sysfs_kobj, NULL, "platform_profile");
 }
 EXPORT_SYMBOL_GPL(platform_profile_notify);
 
@@ -169,7 +171,7 @@ int platform_profile_cycle(void)
 	mutex_unlock(&profile_lock);
 
 	if (!err)
-		sysfs_notify(acpi_kobj, NULL, "platform_profile");
+		sysfs_notify(sysfs_kobj, NULL, "platform_profile");
 
 	return err;
 }
@@ -193,7 +195,13 @@ int platform_profile_register(struct platform_profile_handler *pprof)
 		return -EINVAL;
 	}
 
-	err = sysfs_create_group(acpi_kobj, &platform_profile_group);
+	if (acpi_kobj) {
+		sysfs_kobj = acpi_kobj;
+	} else {
+		sysfs_kobj = firmware_kobj;
+	}
+
+	err = sysfs_create_group(sysfs_kobj, &platform_profile_group);
 	if (err) {
 		mutex_unlock(&profile_lock);
 		return err;
@@ -207,7 +215,7 @@ EXPORT_SYMBOL_GPL(platform_profile_register);
 
 int platform_profile_remove(void)
 {
-	sysfs_remove_group(acpi_kobj, &platform_profile_group);
+	sysfs_remove_group(sysfs_kobj, &platform_profile_group);
 
 	mutex_lock(&profile_lock);
 	cur_profile = NULL;
