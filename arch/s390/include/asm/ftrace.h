@@ -2,18 +2,13 @@
 #ifndef _ASM_S390_FTRACE_H
 #define _ASM_S390_FTRACE_H
 
-#define HAVE_FUNCTION_GRAPH_RET_ADDR_PTR
 #define ARCH_SUPPORTS_FTRACE_OPS 1
 #define MCOUNT_INSN_SIZE	6
 
 #ifndef __ASSEMBLY__
 
-#ifdef CONFIG_CC_IS_CLANG
-/* https://bugs.llvm.org/show_bug.cgi?id=41424 */
-#define ftrace_return_address(n) 0UL
-#else
-#define ftrace_return_address(n) __builtin_return_address(n)
-#endif
+unsigned long return_address(unsigned int n);
+#define ftrace_return_address(n) return_address(n)
 
 void ftrace_caller(void);
 
@@ -53,6 +48,23 @@ static __always_inline struct pt_regs *arch_ftrace_get_regs(struct ftrace_regs *
 		return regs;
 	return NULL;
 }
+
+#ifdef CONFIG_FUNCTION_GRAPH_TRACER
+struct fgraph_ret_regs {
+	unsigned long gpr2;
+	unsigned long fp;
+};
+
+static __always_inline unsigned long fgraph_ret_regs_return_value(struct fgraph_ret_regs *ret_regs)
+{
+	return ret_regs->gpr2;
+}
+
+static __always_inline unsigned long fgraph_ret_regs_frame_pointer(struct fgraph_ret_regs *ret_regs)
+{
+	return ret_regs->fp;
+}
+#endif /* CONFIG_FUNCTION_GRAPH_TRACER */
 
 static __always_inline unsigned long
 ftrace_regs_get_instruction_pointer(const struct ftrace_regs *fregs)

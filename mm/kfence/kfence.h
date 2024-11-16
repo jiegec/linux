@@ -98,11 +98,14 @@ struct kfence_metadata {
 	/* For updating alloc_covered on frees. */
 	u32 alloc_stack_hash;
 #ifdef CONFIG_MEMCG
-	struct obj_cgroup *objcg;
+	struct slabobj_ext obj_exts;
 #endif
 };
 
-extern struct kfence_metadata kfence_metadata[CONFIG_KFENCE_NUM_OBJECTS];
+#define KFENCE_METADATA_SIZE PAGE_ALIGN(sizeof(struct kfence_metadata) * \
+					CONFIG_KFENCE_NUM_OBJECTS)
+
+extern struct kfence_metadata *kfence_metadata;
 
 static inline struct kfence_metadata *addr_to_metadata(unsigned long addr)
 {

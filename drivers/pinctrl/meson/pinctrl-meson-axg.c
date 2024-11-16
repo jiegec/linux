@@ -1,10 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Pin controller and GPIO driver for Amlogic Meson AXG SoC.
  *
  * Copyright (c) 2017 Amlogic, Inc. All rights reserved.
  * Author: Xingyu Chen <xingyu.chen@amlogic.com>
- *
- * SPDX-License-Identifier: (GPL-2.0+ or MIT)
  */
 
 #include <dt-bindings/gpio/meson-axg-gpio.h>
@@ -1092,4 +1091,5 @@ static struct platform_driver meson_axg_pinctrl_driver = {
 };
 
 module_platform_driver(meson_axg_pinctrl_driver);
+MODULE_DESCRIPTION("Amlogic Meson AXG pinctrl driver");
 MODULE_LICENSE("Dual BSD/GPL");

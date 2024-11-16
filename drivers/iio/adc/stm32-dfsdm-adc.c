@@ -19,7 +19,8 @@
 #include <linux/iio/triggered_buffer.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
@@ -758,8 +759,7 @@ static int stm32_dfsdm_start_conv(struct iio_dev *indio_dev,
 	return 0;
 
 filter_unconfigure:
-	regmap_update_bits(regmap, DFSDM_CR1(adc->fl_id),
-			   DFSDM_CR1_CFG_MASK, 0);
+	regmap_clear_bits(regmap, DFSDM_CR1(adc->fl_id), DFSDM_CR1_CFG_MASK);
 stop_channels:
 	stm32_dfsdm_stop_channel(indio_dev);
 
@@ -773,8 +773,7 @@ static void stm32_dfsdm_stop_conv(struct iio_dev *indio_dev)
 
 	stm32_dfsdm_stop_filter(adc->dfsdm, adc->fl_id);
 
-	regmap_update_bits(regmap, DFSDM_CR1(adc->fl_id),
-			   DFSDM_CR1_CFG_MASK, 0);
+	regmap_clear_bits(regmap, DFSDM_CR1(adc->fl_id), DFSDM_CR1_CFG_MASK);
 
 	stm32_dfsdm_stop_channel(indio_dev);
 }
@@ -950,16 +949,14 @@ static int stm32_dfsdm_adc_dma_start(struct iio_dev *indio_dev)
 
 	if (adc->nconv == 1 && !indio_dev->trig) {
 		/* Enable regular DMA transfer*/
-		ret = regmap_update_bits(adc->dfsdm->regmap,
-					 DFSDM_CR1(adc->fl_id),
-					 DFSDM_CR1_RDMAEN_MASK,
-					 DFSDM_CR1_RDMAEN_MASK);
+		ret = regmap_set_bits(adc->dfsdm->regmap,
+				      DFSDM_CR1(adc->fl_id),
+				      DFSDM_CR1_RDMAEN_MASK);
 	} else {
 		/* Enable injected DMA transfer*/
-		ret = regmap_update_bits(adc->dfsdm->regmap,
-					 DFSDM_CR1(adc->fl_id),
-					 DFSDM_CR1_JDMAEN_MASK,
-					 DFSDM_CR1_JDMAEN_MASK);
+		ret = regmap_set_bits(adc->dfsdm->regmap,
+				      DFSDM_CR1(adc->fl_id),
+				      DFSDM_CR1_JDMAEN_MASK);
 	}
 
 	if (ret < 0)
@@ -980,8 +977,8 @@ static void stm32_dfsdm_adc_dma_stop(struct iio_dev *indio_dev)
 	if (!adc->dma_chan)
 		return;
 
-	regmap_update_bits(adc->dfsdm->regmap, DFSDM_CR1(adc->fl_id),
-			   DFSDM_CR1_RDMAEN_MASK | DFSDM_CR1_JDMAEN_MASK, 0);
+	regmap_clear_bits(adc->dfsdm->regmap, DFSDM_CR1(adc->fl_id),
+			  DFSDM_CR1_RDMAEN_MASK | DFSDM_CR1_JDMAEN_MASK);
 	dmaengine_terminate_all(adc->dma_chan);
 }
 
@@ -1115,7 +1112,7 @@ static int stm32_dfsdm_single_conv(struct iio_dev *indio_dev,
 				   const struct iio_chan_spec *chan, int *res)
 {
 	struct stm32_dfsdm_adc *adc = iio_priv(indio_dev);
-	long timeout;
+	long time_left;
 	int ret;
 
 	reinit_completion(&adc->completion);
@@ -1140,17 +1137,17 @@ static int stm32_dfsdm_single_conv(struct iio_dev *indio_dev,
 		goto stop_dfsdm;
 	}
 
-	timeout = wait_for_completion_interruptible_timeout(&adc->completion,
-							    DFSDM_TIMEOUT);
+	time_left = wait_for_completion_interruptible_timeout(&adc->completion,
+							      DFSDM_TIMEOUT);
 
 	/* Mask IRQ for regular conversion achievement*/
 	regmap_update_bits(adc->dfsdm->regmap, DFSDM_CR2(adc->fl_id),
 			   DFSDM_CR2_REOCIE_MASK, DFSDM_CR2_REOCIE(0));
 
-	if (timeout == 0)
+	if (time_left == 0)
 		ret = -ETIMEDOUT;
-	else if (timeout < 0)
-		ret = timeout;
+	else if (time_left < 0)
+		ret = time_left;
 	else
 		ret = IIO_VAL_INT;
 
@@ -1304,9 +1301,8 @@ static irqreturn_t stm32_dfsdm_irq(int irq, void *arg)
 	if (status & DFSDM_ISR_ROVRF_MASK) {
 		if (int_en & DFSDM_CR2_ROVRIE_MASK)
 			dev_warn(&indio_dev->dev, "Overrun detected\n");
-		regmap_update_bits(regmap, DFSDM_ICR(adc->fl_id),
-				   DFSDM_ICR_CLRROVRF_MASK,
-				   DFSDM_ICR_CLRROVRF_MASK);
+		regmap_set_bits(regmap, DFSDM_ICR(adc->fl_id),
+				DFSDM_ICR_CLRROVRF_MASK);
 	}
 
 	return IRQ_HANDLED;
@@ -1619,7 +1615,7 @@ err_cleanup:
 	return ret;
 }
 
-static int stm32_dfsdm_adc_remove(struct platform_device *pdev)
+static void stm32_dfsdm_adc_remove(struct platform_device *pdev)
 {
 	struct iio_dev *indio_dev = platform_get_drvdata(pdev);
 	struct stm32_dfsdm_adc *adc = iio_priv(indio_dev);
@@ -1628,8 +1624,6 @@ static int stm32_dfsdm_adc_remove(struct platform_device *pdev)
 		of_platform_depopulate(&pdev->dev);
 	iio_device_unregister(indio_dev);
 	stm32_dfsdm_dma_release(indio_dev);
-
-	return 0;
 }
 
 static int stm32_dfsdm_adc_suspend(struct device *dev)
@@ -1676,7 +1670,7 @@ static struct platform_driver stm32_dfsdm_adc_driver = {
 		.pm = pm_sleep_ptr(&stm32_dfsdm_adc_pm_ops),
 	},
 	.probe = stm32_dfsdm_adc_probe,
-	.remove = stm32_dfsdm_adc_remove,
+	.remove_new = stm32_dfsdm_adc_remove,
 };
 module_platform_driver(stm32_dfsdm_adc_driver);
 

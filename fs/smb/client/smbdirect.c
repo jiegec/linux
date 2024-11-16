@@ -406,7 +406,7 @@ static void smbd_post_send_credits(struct work_struct *work)
 			else
 				response = get_empty_queue_buffer(info);
 			if (!response) {
-				/* now switch to emtpy packet queue */
+				/* now switch to empty packet queue */
 				if (use_receive_queue) {
 					use_receive_queue = 0;
 					continue;
@@ -618,7 +618,7 @@ out:
 
 /*
  * Test if FRWR (Fast Registration Work Requests) is supported on the device
- * This implementation requries FRWR on RDMA read/write
+ * This implementation requires FRWR on RDMA read/write
  * return value: true if it is supported
  */
 static bool frwr_is_supported(struct ib_device_attr *attrs)
@@ -1401,10 +1401,13 @@ create_conn:
 	server->smbd_conn = smbd_get_connection(
 		server, (struct sockaddr *) &server->dstaddr);
 
-	if (server->smbd_conn)
+	if (server->smbd_conn) {
 		cifs_dbg(VFS, "RDMA transport re-established\n");
-
-	return server->smbd_conn ? 0 : -ENOENT;
+		trace_smb3_smbd_connect_done(server->hostname, server->conn_id, &server->dstaddr);
+		return 0;
+	}
+	trace_smb3_smbd_connect_err(server->hostname, server->conn_id, &server->dstaddr);
+	return -ENOENT;
 }
 
 static void destroy_caches_and_workqueue(struct smbd_connection *info)
@@ -2133,7 +2136,7 @@ static int allocate_mr_list(struct smbd_connection *info)
 	for (i = 0; i < info->responder_resources * 2; i++) {
 		smbdirect_mr = kzalloc(sizeof(*smbdirect_mr), GFP_KERNEL);
 		if (!smbdirect_mr)
-			goto out;
+			goto cleanup_entries;
 		smbdirect_mr->mr = ib_alloc_mr(info->pd, info->mr_type,
 					info->max_frmr_depth);
 		if (IS_ERR(smbdirect_mr->mr)) {
@@ -2159,7 +2162,7 @@ static int allocate_mr_list(struct smbd_connection *info)
 
 out:
 	kfree(smbdirect_mr);
-
+cleanup_entries:
 	list_for_each_entry_safe(smbdirect_mr, tmp, &info->mr_list, list) {
 		list_del(&smbdirect_mr->list);
 		ib_dereg_mr(smbdirect_mr->mr);
@@ -2174,7 +2177,7 @@ out:
  * MR available in the list. It may access the list while the
  * smbd_mr_recovery_work is recovering the MR list. This doesn't need a lock
  * as they never modify the same places. However, there may be several CPUs
- * issueing I/O trying to get MR at the same time, mr_list_lock is used to
+ * issuing I/O trying to get MR at the same time, mr_list_lock is used to
  * protect this situation.
  */
 static struct smbd_mr *get_mr(struct smbd_connection *info)
@@ -2308,7 +2311,7 @@ struct smbd_mr *smbd_register_mr(struct smbd_connection *info,
 	/*
 	 * There is no need for waiting for complemtion on ib_post_send
 	 * on IB_WR_REG_MR. Hardware enforces a barrier and order of execution
-	 * on the next ib_post_send when we actaully send I/O to remote peer
+	 * on the next ib_post_send when we actually send I/O to remote peer
 	 */
 	rc = ib_post_send(info->id->qp, &reg_wr->wr, NULL);
 	if (!rc)

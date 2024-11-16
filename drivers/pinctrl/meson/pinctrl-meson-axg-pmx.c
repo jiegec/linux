@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 /*
  * Second generation of pinmux driver for Amlogic Meson-AXG SoC.
  *
@@ -6,8 +7,6 @@
  *
  * Copyright (c) 2017 Amlogic, Inc. All rights reserved.
  * Author: Xingyu Chen <xingyu.chen@amlogic.com>
- *
- * SPDX-License-Identifier: (GPL-2.0+ or MIT)
  */
 
 /*
@@ -118,4 +117,5 @@ const struct pinmux_ops meson_axg_pmx_ops = {
 };
 EXPORT_SYMBOL_GPL(meson_axg_pmx_ops);
 
+MODULE_DESCRIPTION("Amlogic Meson AXG second generation pinmux driver");
 MODULE_LICENSE("Dual BSD/GPL");

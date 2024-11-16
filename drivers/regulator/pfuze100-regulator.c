@@ -680,7 +680,7 @@ static const struct regmap_config pfuze_regmap_config = {
 	.reg_bits = 8,
 	.val_bits = 8,
 	.max_register = PFUZE_NUMREGS - 1,
-	.cache_type = REGCACHE_RBTREE,
+	.cache_type = REGCACHE_MAPLE,
 };
 
 static int pfuze100_regulator_probe(struct i2c_client *client)
@@ -699,8 +699,7 @@ static int pfuze100_regulator_probe(struct i2c_client *client)
 		return -ENOMEM;
 
 	if (client->dev.of_node) {
-		match = of_match_device(of_match_ptr(pfuze_dt_ids),
-				&client->dev);
+		match = of_match_device(pfuze_dt_ids, &client->dev);
 		if (!match) {
 			dev_err(&client->dev, "Error: No device match found\n");
 			return -ENODEV;

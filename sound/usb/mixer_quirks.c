@@ -33,7 +33,7 @@
 #include "mixer.h"
 #include "mixer_quirks.h"
 #include "mixer_scarlett.h"
-#include "mixer_scarlett_gen2.h"
+#include "mixer_scarlett2.h"
 #include "mixer_us16x08.h"
 #include "mixer_s1810c.h"
 #include "helper.h"
@@ -1139,7 +1139,7 @@ static int snd_ftu_create_volume_ctls(struct usb_mixer_interface *mixer)
 	for (out = 0; out < 8; out++) {
 		control = out + 1;
 		for (in = 0; in < 8; in++) {
-			cmask = 1 << in;
+			cmask = BIT(in);
 			snprintf(name, sizeof(name),
 				"AIn%d - Out%d Capture Volume",
 				in  + 1, out + 1);
@@ -1150,7 +1150,7 @@ static int snd_ftu_create_volume_ctls(struct usb_mixer_interface *mixer)
 				return err;
 		}
 		for (in = 8; in < 16; in++) {
-			cmask = 1 << in;
+			cmask = BIT(in);
 			snprintf(name, sizeof(name),
 				"DIn%d - Out%d Playback Volume",
 				in - 7, out + 1);
@@ -1215,7 +1215,7 @@ static int snd_ftu_create_effect_return_ctls(struct usb_mixer_interface *mixer)
 	const unsigned int control = 7;
 
 	for (ch = 0; ch < 4; ++ch) {
-		cmask = 1 << ch;
+		cmask = BIT(ch);
 		snprintf(name, sizeof(name),
 			"Effect Return %d Volume", ch + 1);
 		err = snd_create_std_mono_ctl(mixer, id, control,
@@ -1239,7 +1239,7 @@ static int snd_ftu_create_effect_send_ctls(struct usb_mixer_interface *mixer)
 	const unsigned int control = 9;
 
 	for (ch = 0; ch < 8; ++ch) {
-		cmask = 1 << ch;
+		cmask = BIT(ch);
 		snprintf(name, sizeof(name),
 			"Effect Send AIn%d Volume", ch + 1);
 		err = snd_create_std_mono_ctl(mixer, id, control, cmask,
@@ -1249,7 +1249,7 @@ static int snd_ftu_create_effect_send_ctls(struct usb_mixer_interface *mixer)
 			return err;
 	}
 	for (ch = 8; ch < 16; ++ch) {
-		cmask = 1 << ch;
+		cmask = BIT(ch);
 		snprintf(name, sizeof(name),
 			"Effect Send DIn%d Volume", ch - 7);
 		err = snd_create_std_mono_ctl(mixer, id, control, cmask,
@@ -1352,7 +1352,7 @@ static int snd_c400_create_vol_ctls(struct usb_mixer_interface *mixer)
 					chan - num_outs + 1, out + 1);
 			}
 
-			cmask = (out == 0) ? 0 : 1 << (out - 1);
+			cmask = (out == 0) ? 0 : BIT(out - 1);
 			offset = chan * num_outs;
 			err = snd_create_std_mono_ctl_offset(mixer, id, control,
 						cmask, val_type, offset, name,
@@ -1438,7 +1438,7 @@ static int snd_c400_create_effect_vol_ctls(struct usb_mixer_interface *mixer)
 				chan - num_outs + 1);
 		}
 
-		cmask = (chan == 0) ? 0 : 1 << (chan - 1);
+		cmask = (chan == 0) ? 0 : BIT(chan - 1);
 		err = snd_create_std_mono_ctl(mixer, id, control,
 						cmask, val_type, name,
 						&snd_usb_mixer_vol_tlv);
@@ -1480,7 +1480,7 @@ static int snd_c400_create_effect_ret_vol_ctls(struct usb_mixer_interface *mixer
 			chan + 1);
 
 		cmask = (chan == 0) ? 0 :
-			1 << (chan + (chan % 2) * num_outs - 1);
+			BIT(chan + (chan % 2) * num_outs - 1);
 		err = snd_create_std_mono_ctl_offset(mixer, id, control,
 						cmask, val_type, offset, name,
 						&snd_usb_mixer_vol_tlv);
@@ -2568,12 +2568,12 @@ static int snd_bbfpro_ctl_update(struct usb_mixer_interface *mixer, u8 reg,
 			usb_idx = 3;
 			usb_val = value ? 3 : 0;
 		} else {
-			usb_idx = 1 << index;
+			usb_idx = BIT(index);
 			usb_val = value ? usb_idx : 0;
 		}
 	} else {
 		usb_req = SND_BBFPRO_USBREQ_CTL_REG2;
-		usb_idx = 1 << index;
+		usb_idx = BIT(index);
 		usb_val = value ? usb_idx : 0;
 	}
 
@@ -2978,6 +2978,7 @@ static int snd_bbfpro_controls_create(struct usb_mixer_interface *mixer)
 #define SND_DJM_850_IDX		0x2
 #define SND_DJM_900NXS2_IDX	0x3
 #define SND_DJM_750MK2_IDX	0x4
+#define SND_DJM_450_IDX		0x5
 
 
 #define SND_DJM_CTL(_name, suffix, _default_value, _windex) { \
@@ -3108,6 +3109,31 @@ static const struct snd_djm_ctl snd_djm_ctls_250mk2[] = {
 };
 
 
+// DJM-450
+static const u16 snd_djm_opts_450_cap1[] = {
+	0x0103, 0x0100, 0x0106, 0x0107, 0x0108, 0x0109, 0x010d, 0x010a };
+
+static const u16 snd_djm_opts_450_cap2[] = {
+	0x0203, 0x0200, 0x0206, 0x0207, 0x0208, 0x0209, 0x020d, 0x020a };
+
+static const u16 snd_djm_opts_450_cap3[] = {
+	0x030a, 0x0311, 0x0312, 0x0307, 0x0308, 0x0309, 0x030d };
+
+static const u16 snd_djm_opts_450_pb1[] = { 0x0100, 0x0101, 0x0104 };
+static const u16 snd_djm_opts_450_pb2[] = { 0x0200, 0x0201, 0x0204 };
+static const u16 snd_djm_opts_450_pb3[] = { 0x0300, 0x0301, 0x0304 };
+
+static const struct snd_djm_ctl snd_djm_ctls_450[] = {
+	SND_DJM_CTL("Capture Level", cap_level, 0, SND_DJM_WINDEX_CAPLVL),
+	SND_DJM_CTL("Ch1 Input",   450_cap1, 2, SND_DJM_WINDEX_CAP),
+	SND_DJM_CTL("Ch2 Input",   450_cap2, 2, SND_DJM_WINDEX_CAP),
+	SND_DJM_CTL("Ch3 Input",   450_cap3, 0, SND_DJM_WINDEX_CAP),
+	SND_DJM_CTL("Ch1 Output",   450_pb1, 0, SND_DJM_WINDEX_PB),
+	SND_DJM_CTL("Ch2 Output",   450_pb2, 1, SND_DJM_WINDEX_PB),
+	SND_DJM_CTL("Ch3 Output",   450_pb3, 2, SND_DJM_WINDEX_PB)
+};
+
+
 // DJM-750
 static const u16 snd_djm_opts_750_cap1[] = {
 	0x0101, 0x0103, 0x0106, 0x0107, 0x0108, 0x0109, 0x010a, 0x010f };
@@ -3203,6 +3229,7 @@ static const struct snd_djm_device snd_djm_devices[] = {
 	[SND_DJM_850_IDX] = SND_DJM_DEVICE(850),
 	[SND_DJM_900NXS2_IDX] = SND_DJM_DEVICE(900nxs2),
 	[SND_DJM_750MK2_IDX] = SND_DJM_DEVICE(750mk2),
+	[SND_DJM_450_IDX] = SND_DJM_DEVICE(450),
 };
 
 
@@ -3420,8 +3447,18 @@ int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
 	case USB_ID(0x1235, 0x8213): /* Focusrite Scarlett 8i6 3rd Gen */
 	case USB_ID(0x1235, 0x8214): /* Focusrite Scarlett 18i8 3rd Gen */
 	case USB_ID(0x1235, 0x8215): /* Focusrite Scarlett 18i20 3rd Gen */
+	case USB_ID(0x1235, 0x8216): /* Focusrite Vocaster One */
+	case USB_ID(0x1235, 0x8217): /* Focusrite Vocaster Two */
+	case USB_ID(0x1235, 0x8218): /* Focusrite Scarlett Solo 4th Gen */
+	case USB_ID(0x1235, 0x8219): /* Focusrite Scarlett 2i2 4th Gen */
+	case USB_ID(0x1235, 0x821a): /* Focusrite Scarlett 4i4 4th Gen */
+	case USB_ID(0x1235, 0x8206): /* Focusrite Clarett 2Pre USB */
+	case USB_ID(0x1235, 0x8207): /* Focusrite Clarett 4Pre USB */
+	case USB_ID(0x1235, 0x8208): /* Focusrite Clarett 8Pre USB */
+	case USB_ID(0x1235, 0x820a): /* Focusrite Clarett+ 2Pre */
+	case USB_ID(0x1235, 0x820b): /* Focusrite Clarett+ 4Pre */
 	case USB_ID(0x1235, 0x820c): /* Focusrite Clarett+ 8Pre */
-		err = snd_scarlett_gen2_init(mixer);
+		err = snd_scarlett2_init(mixer);
 		break;
 
 	case USB_ID(0x041e, 0x323b): /* Creative Sound Blaster E1 */
@@ -3448,6 +3485,9 @@ int snd_usb_mixer_apply_create_quirk(struct usb_mixer_interface *mixer)
 		break;
 	case USB_ID(0x2b73, 0x0017): /* Pioneer DJ DJM-250MK2 */
 		err = snd_djm_controls_create(mixer, SND_DJM_250MK2_IDX);
+		break;
+	case USB_ID(0x2b73, 0x0013): /* Pioneer DJ DJM-450 */
+		err = snd_djm_controls_create(mixer, SND_DJM_450_IDX);
 		break;
 	case USB_ID(0x08e4, 0x017f): /* Pioneer DJ DJM-750 */
 		err = snd_djm_controls_create(mixer, SND_DJM_750_IDX);

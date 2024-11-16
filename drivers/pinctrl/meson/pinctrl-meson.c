@@ -43,7 +43,6 @@
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/of_device.h>
 #include <linux/pinctrl/pinconf-generic.h>
 #include <linux/pinctrl/pinconf.h>
 #include <linux/pinctrl/pinctrl.h>
@@ -768,4 +767,5 @@ int meson_pinctrl_probe(struct platform_device *pdev)
 }
 EXPORT_SYMBOL_GPL(meson_pinctrl_probe);
 
+MODULE_DESCRIPTION("Amlogic Meson SoCs core pinctrl driver");
 MODULE_LICENSE("GPL v2");

@@ -5,7 +5,7 @@
  */
 
 #include <dt-bindings/clock/mediatek,mt8188-clk.h>
-#include <linux/of_device.h>
+#include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
 
 #include "clk-gate.h"
@@ -152,4 +152,6 @@ static struct platform_driver clk_mt8188_apmixed_drv = {
 	},
 };
 module_platform_driver(clk_mt8188_apmixed_drv);
+
+MODULE_DESCRIPTION("MediaTek MT8188 apmixedsys clocks driver");
 MODULE_LICENSE("GPL");

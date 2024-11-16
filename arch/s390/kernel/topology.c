@@ -320,16 +320,10 @@ static int __arch_update_cpu_topology(void)
 
 int arch_update_cpu_topology(void)
 {
-	struct device *dev;
-	int cpu, rc;
+	int rc;
 
 	rc = __arch_update_cpu_topology();
 	on_each_cpu(__arch_update_dedicated_flag, NULL, 0);
-	for_each_online_cpu(cpu) {
-		dev = get_cpu_device(cpu);
-		if (dev)
-			kobject_uevent(&dev->kobj, KOBJ_CHANGE);
-	}
 	return rc;
 }
 
@@ -522,7 +516,7 @@ static struct sched_domain_topology_level s390_topology[] = {
 	{ cpu_coregroup_mask, cpu_core_flags, SD_INIT_NAME(MC) },
 	{ cpu_book_mask, SD_INIT_NAME(BOOK) },
 	{ cpu_drawer_mask, SD_INIT_NAME(DRAWER) },
-	{ cpu_cpu_mask, SD_INIT_NAME(DIE) },
+	{ cpu_cpu_mask, SD_INIT_NAME(PKG) },
 	{ NULL, },
 };
 
@@ -600,7 +594,7 @@ static int __init topology_setup(char *str)
 }
 early_param("topology", topology_setup);
 
-static int topology_ctl_handler(struct ctl_table *ctl, int write,
+static int topology_ctl_handler(const struct ctl_table *ctl, int write,
 				void *buffer, size_t *lenp, loff_t *ppos)
 {
 	int enabled = topology_is_enabled();
@@ -636,7 +630,6 @@ static struct ctl_table topology_ctl_table[] = {
 		.mode		= 0644,
 		.proc_handler	= topology_ctl_handler,
 	},
-	{ },
 };
 
 static int __init topology_init(void)

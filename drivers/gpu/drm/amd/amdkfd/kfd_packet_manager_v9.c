@@ -121,6 +121,7 @@ static int pm_map_process_aldebaran(struct packet_manager *pm,
 	packet->sh_mem_bases = qpd->sh_mem_bases;
 	if (qpd->tba_addr) {
 		packet->sq_shader_tba_lo = lower_32_bits(qpd->tba_addr >> 8);
+		packet->sq_shader_tba_hi = upper_32_bits(qpd->tba_addr >> 8);
 		packet->sq_shader_tma_lo = lower_32_bits(qpd->tma_addr >> 8);
 		packet->sq_shader_tma_hi = upper_32_bits(qpd->tma_addr >> 8);
 	}
@@ -204,14 +205,14 @@ static int pm_set_resources_v9(struct packet_manager *pm, uint32_t *buffer,
 
 static inline bool pm_use_ext_eng(struct kfd_dev *dev)
 {
-	return dev->adev->ip_versions[SDMA0_HWIP][0] >= IP_VERSION(5, 2, 0);
+	return amdgpu_ip_version(dev->adev, SDMA0_HWIP, 0) >=
+	       IP_VERSION(5, 2, 0);
 }
 
 static int pm_map_queues_v9(struct packet_manager *pm, uint32_t *buffer,
 		struct queue *q, bool is_static)
 {
 	struct pm4_mes_map_queues *packet;
-	bool use_static = is_static;
 
 	packet = (struct pm4_mes_map_queues *)buffer;
 	memset(buffer, 0, sizeof(struct pm4_mes_map_queues));
@@ -232,7 +233,7 @@ static int pm_map_queues_v9(struct packet_manager *pm, uint32_t *buffer,
 
 	switch (q->properties.type) {
 	case KFD_QUEUE_TYPE_COMPUTE:
-		if (use_static)
+		if (is_static)
 			packet->bitfields2.queue_type =
 		queue_type__mes_map_queues__normal_latency_static_queue_vi;
 		break;
@@ -242,7 +243,6 @@ static int pm_map_queues_v9(struct packet_manager *pm, uint32_t *buffer,
 		break;
 	case KFD_QUEUE_TYPE_SDMA:
 	case KFD_QUEUE_TYPE_SDMA_XGMI:
-		use_static = false; /* no static queues under SDMA */
 		if (q->properties.sdma_engine_id < 2 &&
 		    !pm_use_ext_eng(q->device->kfd))
 			packet->bitfields2.engine_sel = q->properties.sdma_engine_id +

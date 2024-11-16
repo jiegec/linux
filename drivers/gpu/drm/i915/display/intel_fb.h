@@ -60,9 +60,6 @@ unsigned int intel_tile_height(const struct drm_framebuffer *fb, int color_plane
 unsigned int intel_tile_row_size(const struct drm_framebuffer *fb, int color_plane);
 unsigned int intel_fb_align_height(const struct drm_framebuffer *fb,
 				   int color_plane, unsigned int height);
-unsigned int intel_cursor_alignment(const struct drm_i915_private *i915);
-unsigned int intel_surf_alignment(const struct drm_framebuffer *fb,
-				  int color_plane);
 
 void intel_fb_plane_get_subsampling(int *hsub, int *vsub,
 				    const struct drm_framebuffer *fb,
@@ -94,5 +91,7 @@ intel_user_framebuffer_create(struct drm_device *dev,
 
 bool intel_fb_modifier_uses_dpt(struct drm_i915_private *i915, u64 modifier);
 bool intel_fb_uses_dpt(const struct drm_framebuffer *fb);
+
+unsigned int intel_fb_modifier_to_tiling(u64 fb_modifier);
 
 #endif /* __INTEL_FB_H__ */

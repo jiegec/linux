@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/platform_device.h>
 #include <linux/usb/ch9.h>
 #include <linux/usb/of.h>
 #include <linux/usb/otg.h>
@@ -432,4 +433,5 @@ static void __exit usb_common_exit(void)
 subsys_initcall(usb_common_init);
 module_exit(usb_common_exit);
 
+MODULE_DESCRIPTION("Common code for host and device side USB");
 MODULE_LICENSE("GPL");

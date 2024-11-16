@@ -13,6 +13,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/usb/usb_phy_generic.h>
 #include "musb_core.h"
@@ -188,6 +189,8 @@ static int mpfs_probe(struct platform_device *pdev)
 
 	pdata->config = &mpfs_musb_hdrc_config;
 	pdata->platform_ops = &mpfs_ops;
+
+	pdata->extvbus = device_property_read_bool(dev, "microchip,ext-vbus-drv");
 
 	pdata->mode = usb_get_dr_mode(dev);
 	if (pdata->mode == USB_DR_MODE_UNKNOWN) {

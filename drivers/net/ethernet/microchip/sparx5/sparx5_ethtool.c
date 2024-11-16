@@ -1012,8 +1012,7 @@ static void sparx5_get_sset_strings(struct net_device *ndev, u32 sset, u8 *data)
 		return;
 
 	for (idx = 0; idx < sparx5->num_ethtool_stats; idx++)
-		strncpy(data + idx * ETH_GSTRING_LEN,
-			sparx5->stats_layout[idx], ETH_GSTRING_LEN);
+		ethtool_puts(&data, sparx5->stats_layout[idx]);
 }
 
 static void sparx5_get_sset_data(struct net_device *ndev,
@@ -1184,7 +1183,7 @@ static void sparx5_config_port_stats(struct sparx5 *sparx5, int portno)
 }
 
 static int sparx5_get_ts_info(struct net_device *dev,
-			      struct ethtool_ts_info *info)
+			      struct kernel_ethtool_ts_info *info)
 {
 	struct sparx5_port *port = netdev_priv(dev);
 	struct sparx5 *sparx5 = port->sparx5;

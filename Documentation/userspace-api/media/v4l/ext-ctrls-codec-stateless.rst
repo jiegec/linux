@@ -971,8 +971,8 @@ FWHT Flags
       - ``horizontal_scale``
       - Horizontal scaling factor.
     * - __u8
-      - ``vertical_scaling factor``
-      - Vertical scale.
+      - ``vertical_scale``
+      - Vertical scaling factor.
     * - __u8
       - ``version``
       - Bitstream version.
@@ -3293,7 +3293,7 @@ AV1 Frame Restoration Type.
 
 .. c:type:: v4l2_av1_loop_restoration
 
-AV1 Loop Restauration as described in section 6.10.15 "Loop restoration params
+AV1 Loop Restoration as described in section 6.10.15 "Loop restoration params
 semantics" of :ref:`av1`.
 
 .. cssclass:: longtable

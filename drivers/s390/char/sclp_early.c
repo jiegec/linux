@@ -10,7 +10,7 @@
 
 #include <linux/errno.h>
 #include <linux/memblock.h>
-#include <asm/ctl_reg.h>
+#include <asm/ctlreg.h>
 #include <asm/sclp.h>
 #include <asm/ipl.h>
 #include <asm/setup.h>
@@ -50,11 +50,13 @@ static void __init sclp_early_facilities_detect(void)
 	sclp.has_aisi = !!(sccb->fac118 & 0x10);
 	sclp.has_zpci_lsi = !!(sccb->fac118 & 0x01);
 	if (sccb->fac85 & 0x02)
-		S390_lowcore.machine_flags |= MACHINE_FLAG_ESOP;
+		get_lowcore()->machine_flags |= MACHINE_FLAG_ESOP;
 	if (sccb->fac91 & 0x40)
-		S390_lowcore.machine_flags |= MACHINE_FLAG_TLB_GUEST;
+		get_lowcore()->machine_flags |= MACHINE_FLAG_TLB_GUEST;
+	sclp.has_diag204_bif = !!(sccb->fac98 & 0x80);
 	if (sccb->cpuoff > 134) {
 		sclp.has_diag318 = !!(sccb->byte_134 & 0x80);
+		sclp.has_diag320 = !!(sccb->byte_134 & 0x04);
 		sclp.has_iplcc = !!(sccb->byte_134 & 0x02);
 	}
 	if (sccb->cpuoff > 137) {

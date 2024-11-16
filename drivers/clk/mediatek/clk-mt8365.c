@@ -10,9 +10,7 @@
 #include <linux/clk-provider.h>
 #include <linux/delay.h>
 #include <linux/mfd/syscon.h>
-#include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_device.h>
+#include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 
@@ -814,4 +812,6 @@ static struct platform_driver clk_mt8365_drv = {
 	.remove_new = mtk_clk_simple_remove,
 };
 module_platform_driver(clk_mt8365_drv);
+
+MODULE_DESCRIPTION("MediaTek MT8365 main clocks driver");
 MODULE_LICENSE("GPL");

@@ -189,27 +189,33 @@ the software port.
 
    * - `rx[i]_gro_packets`
      - Number of received packets processed using hardware-accelerated GRO. The
-       number of hardware GRO offloaded packets received on ring i.
+       number of hardware GRO offloaded packets received on ring i. Only true GRO
+       packets are counted: only packets that are in an SKB with a GRO count > 1.
      - Acceleration
 
    * - `rx[i]_gro_bytes`
      - Number of received bytes processed using hardware-accelerated GRO. The
-       number of hardware GRO offloaded bytes received on ring i.
+       number of hardware GRO offloaded bytes received on ring i. Only true GRO
+       packets are counted: only packets that are in an SKB with a GRO count > 1.
      - Acceleration
 
    * - `rx[i]_gro_skbs`
-     - The number of receive SKBs constructed while performing
-       hardware-accelerated GRO.
-     - Informative
-
-   * - `rx[i]_gro_match_packets`
-     - Number of received packets processed using hardware-accelerated GRO that
-       met the flow table match criteria.
+     - The number of GRO SKBs constructed from hardware-accelerated GRO. Only SKBs
+       with a GRO count > 1 are counted.
      - Informative
 
    * - `rx[i]_gro_large_hds`
      - Number of receive packets using hardware-accelerated GRO that have large
        headers that require additional memory to be allocated.
+     - Informative
+
+   * - `rx[i]_hds_nodata_packets`
+     - Number of header only packets in header/data split mode [#accel]_.
+     - Informative
+
+   * - `rx[i]_hds_nodata_bytes`
+     - Number of bytes for header only packets in header/data split mode
+       [#accel]_.
      - Informative
 
    * - `rx[i]_lro_packets`
@@ -300,6 +306,11 @@ the software port.
        in the beginning of the queue. This is a normal condition.
      - Informative
 
+   * - `tx[i]_timestamps`
+     - Transmitted packets that were hardware timestamped at the device's DMA
+       layer.
+     - Informative
+
    * - `tx[i]_added_vlan_packets`
      - The number of packets sent where vlan tag insertion was offloaded to the
        hardware.
@@ -344,6 +355,24 @@ the software port.
 
    * - `rx[i]_cqe_compress_pkts`
      - The number of receive packets with CQE compression on ring i [#accel]_.
+     - Acceleration
+
+   * - `rx[i]_arfs_add`
+     - The number of aRFS flow rules added to the device for direct RQ steering
+       on ring i [#accel]_.
+     - Acceleration
+
+   * - `rx[i]_arfs_request_in`
+     - Number of flow rules that have been requested to move into ring i for
+       direct RQ steering [#accel]_.
+     - Acceleration
+
+   * - `rx[i]_arfs_request_out`
+     - Number of flow rules that have been requested to move out of ring i [#accel]_.
+     - Acceleration
+
+   * - `rx[i]_arfs_expired`
+     - Number of flow rules that have been expired and removed [#accel]_.
      - Acceleration
 
    * - `rx[i]_arfs_err`
@@ -443,11 +472,6 @@ the software port.
    * - `rx[i]_xsk_buff_alloc_err`
      - The number of times allocating an skb or XSK buffer failed in the XSK RQ
        context.
-     - Error
-
-   * - `rx[i]_xsk_arfs_err`
-     - aRFS (accelerated Receive Flow Steering) does not occur in the XSK RQ
-       context, so this counter should never increment.
      - Error
 
    * - `rx[i]_xdp_tx_xmit`
@@ -681,6 +705,18 @@ the software port.
      - Accumulation of time differences between the port timestamp and CQE
        timestamp when the difference is greater than 128 seconds in precision
        time protocol.
+     - Error
+
+   * - `ptp_cq[i]_late_cqe`
+     - Number of times a CQE has been delivered on the PTP timestamping CQ when
+       the CQE was not expected since a certain amount of time had elapsed where
+       the device typically ensures not posting the CQE.
+     - Error
+
+   * - `ptp_cq[i]_lost_cqe`
+     - Number of times a CQE is expected to not be delivered on the PTP
+       timestamping CQE by the device due to a time delta elapsing. If such a
+       CQE is somehow delivered, `ptp_cq[i]_late_cqe` is incremented.
      - Error
 
 .. [#ring_global] The corresponding ring and global counters do not share the

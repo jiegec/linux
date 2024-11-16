@@ -1039,12 +1039,8 @@ snd_emu8000_create_mixer(struct snd_card *card, struct snd_emu8000 *emu)
 	return 0;
 
 __error:
-	for (i = 0; i < EMU8000_NUM_CONTROLS; i++) {
-		down_write(&card->controls_rwsem);
-		if (emu->controls[i])
-			snd_ctl_remove(card, emu->controls[i]);
-		up_write(&card->controls_rwsem);
-	}
+	for (i = 0; i < EMU8000_NUM_CONTROLS; i++)
+		snd_ctl_remove(card, emu->controls[i]);
 	return err;
 }
 

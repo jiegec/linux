@@ -14,11 +14,13 @@
 #[doc(no_inline)]
 pub use core::pin::Pin;
 
+pub use crate::alloc::{box_ext::BoxExt, flags::*, vec_ext::VecExt};
+
 #[doc(no_inline)]
 pub use alloc::{boxed::Box, vec::Vec};
 
 #[doc(no_inline)]
-pub use macros::{module, pin_data, pinned_drop, vtable};
+pub use macros::{module, pin_data, pinned_drop, vtable, Zeroable};
 
 pub use super::build_assert;
 

@@ -18,7 +18,6 @@
 #include <linux/mtd/rawnand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/slab.h>
-#include <linux/of_device.h>
 #include <linux/of.h>
 
 #include <linux/platform_data/mtd-davinci.h>
@@ -672,8 +671,11 @@ static int davinci_nand_exec_instr(struct davinci_nand_info *info,
 		break;
 	}
 
-	if (instr->delay_ns)
+	if (instr->delay_ns) {
+		/* Dummy read to be sure that command is sent before ndelay starts */
+		davinci_nand_readl(info, 0);
 		ndelay(instr->delay_ns);
+	}
 
 	return 0;
 }

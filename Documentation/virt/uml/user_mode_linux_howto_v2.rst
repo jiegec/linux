@@ -223,8 +223,6 @@ remote UML and other VM instances.
 +-----------+--------+------------------------------------+------------+
 | socket    | legacy | none                               | ~ 450Mbit  |
 +-----------+--------+------------------------------------+------------+
-| pcap      | legacy | rx only                            | ~ 450Mbit  |
-+-----------+--------+------------------------------------+------------+
 | ethertap  | legacy | obsolete                           | ~ 500Mbit  |
 +-----------+--------+------------------------------------+------------+
 | vde       | legacy | obsolete                           | ~ 500Mbit  |
@@ -1224,7 +1222,7 @@ between a driver and the host at the UML command line is OK
 security-wise. Allowing it as a loadable module parameter
 isn't.
 
-If such functionality is desireable for a particular application
+If such functionality is desirable for a particular application
 (e.g. loading BPF "firmware" for raw socket network transports),
 it should be off by default and should be explicitly turned on
 as a command line parameter at startup.

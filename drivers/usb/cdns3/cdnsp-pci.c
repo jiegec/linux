@@ -208,8 +208,9 @@ static int __maybe_unused cdnsp_pci_resume(struct device *dev)
 	int ret;
 
 	spin_lock_irqsave(&cdns->lock, flags);
-	ret = cdns_resume(cdns, 1);
+	ret = cdns_resume(cdns);
 	spin_unlock_irqrestore(&cdns->lock, flags);
+	cdns_set_active(cdns, 1);
 
 	return ret;
 }
@@ -230,7 +231,7 @@ static const struct pci_device_id cdnsp_pci_ids[] = {
 
 static struct pci_driver cdnsp_pci_driver = {
 	.name = "cdnsp-pci",
-	.id_table = &cdnsp_pci_ids[0],
+	.id_table = cdnsp_pci_ids,
 	.probe = cdnsp_pci_probe,
 	.remove = cdnsp_pci_remove,
 	.driver = {

@@ -23,6 +23,7 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_device.h>
+#include <linux/of_platform.h>
 #include <linux/of_irq.h>
 
 #include <asm/machdep.h>
@@ -35,7 +36,7 @@
 
 static struct macio_chip      *macio_on_hold;
 
-static int macio_bus_match(struct device *dev, struct device_driver *drv) 
+static int macio_bus_match(struct device *dev, const struct device_driver *drv)
 {
 	const struct of_device_id * matches = drv->of_match_table;
 
@@ -135,7 +136,7 @@ static int macio_device_modalias(const struct device *dev, struct kobj_uevent_en
 
 extern const struct attribute_group *macio_dev_groups[];
 
-struct bus_type macio_bus_type = {
+const struct bus_type macio_bus_type = {
        .name	= "macio",
        .match	= macio_bus_match,
        .uevent	= macio_device_modalias,
