@@ -29,6 +29,17 @@
 		device_type = "memory";
 		reg = <0x0 0x80000000 0x0 0x20000000>;
 	};
+	reserved_memory: reserved-memory {
+                #address-cells = <2>;
+                #size-cells = <2>;
+                ranges;
+
+                sbi: memory@80000000 {
+                        reg = <0 0x80000000 0 0x2000000>;
+                        no-map;
+                };
+	};
+
 	clocks {
 		axi_clk: axi_clk {
 			#clock-cells = <0>;
