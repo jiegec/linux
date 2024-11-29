@@ -47,6 +47,8 @@ CONFIG_ISO9660_FS=m
 CONFIG_JOLIET=y
 # enable ftrace
 CONFIG_FTRACE=y
+# enable qcom memlat governor
+CONFIG_QCOM_SCMI_GENERIC_EXT=y
 # below are copied from arch/arm64/configs/defconfig
 CONFIG_SYSVIPC=y
 CONFIG_POSIX_MQUEUE=y
